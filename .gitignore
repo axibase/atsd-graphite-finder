@@ -1,0 +1,7 @@
+### JetBrains template
+*.iml
+.idea/
+
+atsd_finder.egg-info
+build
+dist
