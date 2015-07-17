@@ -1,7 +1,6 @@
 import requests
 import urllib
 import atsd_conf
-import sys
 import re
 
 from .reader import AtsdReader
@@ -18,7 +17,7 @@ class AtsdNode(object):
     def __init__(self, path):
     
         self.path = path
-        self.name = path.replace('vvv.', '#').split('.')[-1].replace('#', 'vvv.')
+        self.name = path.replace('_.', '#').split('.')[-1].replace('#', '_.')
         self.local = True
         self.is_leaf = False
 
@@ -65,47 +64,47 @@ def arr2tags(arr):
                 
     for tag in arr:
     
-        tag_nv = tag.replace('vvv.', '.').replace('vvv_', ' ').split(':')
+        tag_nv = tag.replace('_.', '.').replace('vvv_', ' ').split(':')
         log.info('[AtsdFinder] tag n:v = ' + unicode(tag_nv))
         tags[tag_nv[0]] = tag_nv[1]
-        
+
     log.info('[AtsdFinder] parsed tags = ' + unicode(tags))
-        
+
     return tags
-    
+
 
 class AtsdFinder(object):
 
     roots = {'entities', 'metrics'}
     intervals = [0, 60, 3600, 86400]
-    interval_names = ['raw', '1_min', '1_hour', '1_day']
+    interval_names = ['detail', '1_min', '1_hour', '1_day']
 
     def __init__(self):
-    
+
         log.info('[AtsdFinder] init')
 
         self.url_base = atsd_conf.url + '/api/v1'
         self.auth = (atsd_conf.username, atsd_conf.password)
-        
-        try:
-            self.entity_catalogues = atsd_conf.entity_catalogues
-        except:
-            self.entity_catalogues = 'abcdefghijklmnopqrstuvwxyz_'
 
         try:
-            self.metric_catalogues = atsd_conf.metric_catalogues
+            self.entity_folders = atsd_conf.entity_folders
         except:
-            self.metric_catalogues = 'abcdefghijklmnopqrstuvwxyz_'
+            self.entity_folders = 'abcdefghijklmnopqrstuvwxyz_'
+
+        try:
+            self.metric_folders = atsd_conf.metric_folders
+        except:
+            self.metric_folders = 'abcdefghijklmnopqrstuvwxyz_'
 
     def find_nodes(self, query):
-    
+
         log.info('[AtsdFinder] finding nodes: query=' + unicode(query.pattern))
         #log.info('[AtsdFinder] finding nodes: query=' + unicode(query))
 
         pattern = query.pattern[:-2] if query.pattern[-1] == '*' else query.pattern
         #pattern = query[:-2] if query[-1] == '*' else query
-        
-        tokens = pattern.replace('vvv.', '#').split('.')
+
+        tokens = pattern.replace('_.', '#').split('.')
         tokens[:] = [token.replace('#', '.') for token in tokens]
 
         log.info('[AtsdFinder] ' + unicode(len(tokens)) + ' tokens')
@@ -113,85 +112,82 @@ class AtsdFinder(object):
         if not tokens or tokens[0] == '':
 
             for root in self.roots:
-            
+
                 log.info('[AtsdFinder] path = ' + root)
 
                 yield AtsdBranchNode(root)
 
         elif len(tokens) == 1:
-        
+
             if tokens[0] == 'entities':
-                for catalogue in self.entity_catalogues:
-                
-                    path = pattern + '.' + catalogue
+                for folder in self.entity_folders:
+
+                    path = pattern + '.' + folder
                     log.info('[AtsdFinder] path = ' +  path)
-                    
+
                     yield AtsdBranchNode(path)
 
             elif tokens[0] == 'metrics':
-                for catalogue in self.metric_catalogues:
-                
-                    path = pattern + '.' + catalogue
+                for folder in self.metric_folders:
+
+                    path = pattern + '.' + folder
                     log.info('[AtsdFinder] path = ' +  path)
-                    
+
                     yield AtsdBranchNode(path)
 
         elif len(tokens) == 2:
 
             if tokens[0] in self.roots:
-                
+
                 if not tokens[1] or tokens[1][0] == "_":
                     other = True
                     url = self.url_base + '/' + urllib.quote(tokens[0], safe = '')
                 else:
                     other = False
                     url = self.url_base + '/' + urllib.quote(tokens[0], safe = '') + '?expression=name%20like%20%27' + urllib.quote(tokens[1], safe = '') + '*%27'
-                    
+
                 # url = self.url_base + '/entities/safeway/metrics?limit=2'
                 log.info('[AtsdFinder] request_url = ' + unicode(url) + '')
-                
-                try:
-                    response = requests.get(url, auth=self.auth)
-                except:
-                    log.info('[AtsdFinder] request = ' + unicode(url) + 'vvvn' + unicode(sys.exc_info()[0]))
-                    
+
+                response = requests.get(url, auth=self.auth)
+
                 #log.info('[AtsdFinder] response = ' + response.text)
                 log.info('[AtsdFinder] status = ' + unicode(response.status_code))
 
                 for smth in response.json():
-                
+
                     if not other:
 
-                        path = pattern + '.' + unicode(smth['name']).replace('.', 'vvv.').encode('punycode')[:-1]
+                        path = pattern + '.' + unicode(smth['name']).replace('.', '_.').encode('punycode')[:-1]
                         log.info('[AtsdFinder] path = ' + path)
-                        
+
                         yield AtsdBranchNode(path)
-                        
+
                     else:
-                    
+
                         matches = False
-                    
+
                         if tokens[0] == 'entities':
-                            for catalogue in self.entity_catalogues:
-                            
-                                if re.match(catalogue + '.*', unicode(smth['name'])):
-                                        
+                            for folder in self.entity_folders:
+
+                                if re.match(folder + '.*', unicode(smth['name'])):
+
                                         matches = True
                                         break
-                        
+
                         elif tokens[0] == 'metrics':
-                            for catalogue in self.metric_catalogues:
-                            
-                                if re.match(catalogue + '.*', unicode(smth['name'])):
-                                        
+                            for folder in self.metric_folders:
+
+                                if re.match(folder + '.*', unicode(smth['name'])):
+
                                         matches = True
                                         break
-                                
+
                         if not matches:
-                        
-                            path = pattern + '.' + unicode(smth['name']).replace('.', 'vvv.').encode('punycode')[:-1]
+
+                            path = pattern + '.' + unicode(smth['name']).replace('.', '_.').encode('punycode')[:-1]
                             log.info('[AtsdFinder] path = ' + path)
-                            
+
                             yield AtsdBranchNode(path)
 
         elif len(tokens) == 3:
@@ -200,35 +196,29 @@ class AtsdFinder(object):
 
                 url = self.url_base + '/entities/' + urllib.quote(tokens[2]) + '/metrics'
                 log.info('[AtsdFinder] request_url = ' + url)
-                
-                try:
-                    response = requests.get(url, auth=self.auth)
-                except:
-                    log.info('[AtsdFinder] error = ' + unicode(sys.exc_info()[0]))
-                    
+
+                response = requests.get(url, auth=self.auth)
+
                 #log.info('[AtsdFinder] response = ' + response.text)
                 log.info('[AtsdFinder] status = ' + unicode(response.status_code))
 
                 for metric in response.json():
-                
-                    path = pattern + '.' + unicode(metric['name']).replace('.', 'vvv.').encode('punycode')[:-1]
+
+                    path = pattern + '.' + unicode(metric['name']).replace('.', '_.').encode('punycode')[:-1]
                     log.info('[AtsdFinder] path = ' + path)
-                    
+
                     yield AtsdBranchNode(path)
 
             elif tokens[0] == 'metrics':
 
                 url = self.url_base + '/metrics/' + urllib.quote(tokens[2], safe='')+ '/entity-and-tags'
                 log.info('[AtsdFinder] request_url = ' + url)
-                
-                try:
-                    response = requests.get(url, auth=self.auth)  
-                except:
-                    log.info('[AtsdFinder] error = ' + unicode(sys.exc_info()[0]))
-                    
+
+                response = requests.get(url, auth=self.auth)
+
                 #log.info('[AtsdFinder] response = ' + response.text)
                 log.info('[AtsdFinder] status = ' + unicode(response.status_code))
-                         
+
                 entities = set()
 
                 for entity in response.json():
@@ -236,10 +226,10 @@ class AtsdFinder(object):
                     entities.add(entity['entity'])
 
                 for entity in entities:
-                
-                    path = pattern + '.' + unicode(entity).replace('.', 'vvv.').encode('punycode')[:-1]
+
+                    path = pattern + '.' + unicode(entity).replace('.', '_.').encode('punycode')[:-1]
                     log.info('[AtsdFinder] path = ' + path)
-                    
+
                     yield AtsdBranchNode(path)
 
         elif len(tokens) > 3 and not tokens[-1] in self.interval_names:
@@ -253,22 +243,19 @@ class AtsdFinder(object):
 
                 entity = tokens[3]
                 metric = tokens[2]
-                
+
             tags = arr2tags(tokens[4:])
 
             url = self.url_base + '/metrics/' + urllib.quote(metric, safe='') + '/entity-and-tags'
             log.info('[AtsdFinder] request_url = ' + url)
-            
-            try:
-                response = requests.get(url, auth=self.auth)
-            except:
-                log.info('[AtsdFinder] error = ' + unicode(sys.exc_info()[0]))
-                
+
+            response = requests.get(url, auth=self.auth)
+
             #log.info('[AtsdFinder] response = ' + response.text)
             log.info('[AtsdFinder] status = ' + unicode(response.status_code))
-            
+
             tag_combos = []
-            
+
             for combo in response.json():
                 if combo['entity'] == entity:
                     tag_combos.append(combo['tags'])
@@ -278,37 +265,37 @@ class AtsdFinder(object):
             for tag_combo in tag_combos:
                 for tag_name in tag_combo:
                     tag_names.add(tag_name)
-                    
+
             tag_names = list(tag_names)
             tag_names.sort()
-            
+
             true_tag_combos = []
-            
+
             found = False
-            
+
             for tag_combo in tag_combos:
-            
+
                 suitable = True
-            
+
                 for tag_name in tags:
-                    
+
                     if tag_name in tag_combo and tag_combo[tag_name] == tags[tag_name]:
                         pass
                     else:
                         suitable = False
                         break
-                        
+
                 if (suitable):
                     for tag_name in tag_names:
                         if not tag_name in tags and tag_name in tag_combo:
-                        
+
                             found = True
-                        
-                            path = pattern + '.' + unicode(tag_name + ':' + tag_combo[tag_name])\
-                                .replace('.', 'vvv.')\
+
+                            path = pattern + '.' + unicode(tag_name + ':' + tag_combo[tag_name]) \
+                                .replace('.', '_.') \
                                 .replace(' ', 'vvv_')
                             log.info('[AtsdFinder] path = ' + path)
-                            
+
                             yield AtsdBranchNode(path)
                             
                             break
