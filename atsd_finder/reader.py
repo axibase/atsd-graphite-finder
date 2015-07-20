@@ -1,8 +1,8 @@
 from graphite.intervals import Interval, IntervalSet
 import requests
-import atsd_conf
 import json
 import urlparse
+from graphite.local_settings import ATSD_CONF
 try:
     from graphite.logger import log
 except:
@@ -90,15 +90,16 @@ class AtsdReader(object):
 
         #: :class:`.Session`
         self._session = requests.Session()
-        self._session.auth = (atsd_conf.username, atsd_conf.password)
+        self._session.auth = (ATSD_CONF['username'],
+                              ATSD_CONF['password'])
 
         #: `str` api path
-        self._context = urlparse.urljoin(atsd_conf.url, 'api/v1/')
+        self._context = urlparse.urljoin(ATSD_CONF['url'], 'api/v1/')
 
         log.info('[AtsdReader] init: entity=' + unicode(entity)
                  + ' metric=' + unicode(metric)
                  + ' tags=' + unicode(tags)
-                 + ' url=' + unicode(atsd_conf.url))
+                 + ' url=' + unicode(ATSD_CONF['url']))
 
     def fetch(self, start_time, end_time):
         """ fetch time series

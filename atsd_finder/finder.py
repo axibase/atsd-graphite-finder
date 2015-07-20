@@ -1,6 +1,6 @@
 import requests
 import urllib
-import atsd_conf
+from graphite.local_settings import ATSD_CONF
 import re
 
 from .reader import AtsdReader
@@ -83,16 +83,16 @@ class AtsdFinder(object):
 
         log.info('[AtsdFinder] init')
 
-        self.url_base = atsd_conf.url + '/api/v1'
-        self.auth = (atsd_conf.username, atsd_conf.password)
+        self.url_base = ATSD_CONF['url'] + '/api/v1'
+        self.auth = (ATSD_CONF['username'], ATSD_CONF['password'])
 
         try:
-            self.entity_folders = atsd_conf.entity_folders
+            self.entity_folders = ATSD_CONF['entity_folders']
         except:
             self.entity_folders = 'abcdefghijklmnopqrstuvwxyz_'
 
         try:
-            self.metric_folders = atsd_conf.metric_folders
+            self.metric_folders = ATSD_CONF['metric_folders']
         except:
             self.metric_folders = 'abcdefghijklmnopqrstuvwxyz_'
 
