@@ -4,18 +4,26 @@ import atsd_finder
 
 
 class TestAtsdFinder(unittest.TestCase):
+    def test_interval_schema(self):
+        reader = atsd_finder.AtsdReader('nurswgvml006',
+                                        'cpu_busy',
+                                        tags={},
+                                        step=0,
+                                        statistic='DETAIL')
+        time_info, values = reader.fetch(time.time() - 2 * 24 * 60 * 60, time.time())
+        print time_info
 
     def test_reader_fetch(self):
         reader = atsd_finder.AtsdReader('atsd',
                                         'metric_gets_per_second',
                                         {'host': 'NURSWGVML007'},
                                         5, 'AVG')
-        res = reader.fetch(time.time() - 24 * 60 * 60, time.time())
+        time_info, values = reader.fetch(time.time() - 24 * 60 * 60, time.time())
 
-        start = res[0][0]
-        end = res[0][1]
-        step = res[0][2]
-        self.assertEqual((end - start) / step, float(len(res[1])))
+        start = time_info[0]
+        end = time_info[1]
+        step = time_info[2]
+        self.assertEqual((end - start) / step, float(len(values)))
 
     def test_reader_group(self):
         reader = atsd_finder.AtsdReader('nurswgvml006',
@@ -50,12 +58,12 @@ class TestAtsdFinder(unittest.TestCase):
                                          u'unit': u'oz',
                                          u'zip_code': u'20032'},
                                         0, 'AVG')
-        res = reader.fetch(time.time() - 24 * 60 * 60, time.time())
+        time_info, values = reader.fetch(time.time() - 24 * 60 * 60, time.time())
 
-        start = res[0][0]
-        end = res[0][1]
-        step = res[0][2]
-        self.assertEqual((end - start) / step, float(len(res[1])))
+        start = time_info[0]
+        end = time_info[1]
+        step = time_info[2]
+        self.assertEqual((end - start) / step, float(len(values)))
 
     def test_reader_get_intervals(self):
         reader = atsd_finder.AtsdReader('atsd',

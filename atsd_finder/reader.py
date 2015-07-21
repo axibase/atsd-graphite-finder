@@ -152,10 +152,21 @@ class AtsdReader(object):
         return time_info, values
 
     def _get_appropriate_step(self, start_time, end_time):
+        interval = end_time - start_time
+        interval_schema = {24 * 60 * 60: 60,}
 
-        INTERVAL_SCHEMA = {24 * 60 * 60: 0,}
+        intervals = interval_schema.keys()
+        intervals.sort()
 
-        return 0
+        step = 0
+        for i in intervals:
+
+            if interval < i:
+                break
+
+            step = interval_schema[i]
+
+        return step
 
     def _query_series(self, start_time, end_time, step):
         """
