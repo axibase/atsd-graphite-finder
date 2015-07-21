@@ -2,6 +2,8 @@ import requests
 import urllib
 from graphite.local_settings import ATSD_CONF
 import re
+import os
+import traceback
 
 from .reader import AtsdReader
 try:
@@ -10,14 +12,16 @@ except:
     import default_logger as log
 
 
+
 class AtsdNode(object):
 
-    __slots__ = ('name', 'path', 'local', 'is_leaf')
+    __slots__ = ('name', 'path', 'token', 'local', 'is_leaf')
 
-    def __init__(self, path):
+    def __init__(self, path, token):
     
         self.path = path
-        self.name = path.replace('_.', '#').split('.')[-1].replace('#', '_.')
+        self.name = path.split('.')[-1]
+        self.token = token
         self.local = True
         self.is_leaf = False
 
@@ -35,9 +39,9 @@ class AtsdLeafNode(AtsdNode):
 
     __slots__ = ('reader', 'intervals')
 
-    def __init__(self, path, reader):
+    def __init__(self, path, token, reader):
     
-        AtsdNode.__init__(self, path)
+        AtsdNode.__init__(self, path, token)
         self.reader = reader
         self.intervals = reader.get_intervals()
         self.is_leaf = True
@@ -49,11 +53,6 @@ class AtsdLeafNode(AtsdNode):
     def __repr__(self):
     
         return '<LeafNode[%x]: %s (%s)>' % (id(self), self.path, self.reader)
-
-
-def str2json(string):
-
-    return '{"' + string.replace(':', '":"').replace('&', '","') + '"}'
     
     
 def arr2tags(arr):
@@ -64,13 +63,28 @@ def arr2tags(arr):
                 
     for tag in arr:
     
-        tag_nv = tag.replace('_.', '.').replace('vvv_', ' ').split(':')
+        tag_nv = tag.split(':')
         log.info('[AtsdFinder] tag n:v = ' + unicode(tag_nv))
         tags[tag_nv[0]] = tag_nv[1]
 
     log.info('[AtsdFinder] parsed tags = ' + unicode(tags))
 
     return tags
+    
+  
+def quote(string):
+
+    return urllib.quote(string)
+    
+    
+def full_quote(string):
+
+    return urllib.quote(string).replace('.', '%2E')
+    
+    
+def unquote(string):
+
+    return urllib.unquote(string)
 
 
 class AtsdFinder(object):
@@ -81,7 +95,7 @@ class AtsdFinder(object):
 
     def __init__(self):
 
-        log.info('[AtsdFinder] init')
+        log.info('[AtsdFinder] init ' + unicode(os.getppid()) + ' : ' + unicode(os.getpid()))
 
         self.url_base = ATSD_CONF['url'] + '/api/v1'
         self.auth = (ATSD_CONF['username'], ATSD_CONF['password'])
@@ -97,25 +111,30 @@ class AtsdFinder(object):
             self.metric_folders = 'abcdefghijklmnopqrstuvwxyz_'
 
     def find_nodes(self, query):
+    
+        log.info('[AtsdFinder] stack trace: ' + unicode('\n'.join(traceback.format_stack())))
 
         log.info('[AtsdFinder] finding nodes: query=' + unicode(query.pattern))
         #log.info('[AtsdFinder] finding nodes: query=' + unicode(query))
 
         pattern = query.pattern[:-2] if query.pattern[-1] == '*' else query.pattern
         #pattern = query[:-2] if query[-1] == '*' else query
-
-        tokens = pattern.replace('_.', '#').split('.')
-        tokens[:] = [token.replace('#', '.') for token in tokens]
-
-        log.info('[AtsdFinder] ' + unicode(len(tokens)) + ' tokens')
+        
+        tokens = pattern.split('.')
+        tokens[:] = [unquote(token) for token in tokens]
+            
+        log.info('[AtsdFinder] tokens = ' + unicode(tokens))
 
         if not tokens or tokens[0] == '':
 
             for root in self.roots:
 
                 log.info('[AtsdFinder] path = ' + root)
+                
+                ATSD_CONF['path_map'][root] = [root]
+                #log.info('[AtsdFinder] path map = ' + unicode(ATSD_CONF['path_map']))
 
-                yield AtsdBranchNode(root)
+                yield AtsdBranchNode(root, root)
 
         elif len(tokens) == 1:
 
@@ -125,7 +144,7 @@ class AtsdFinder(object):
                     path = pattern + '.' + folder
                     log.info('[AtsdFinder] path = ' +  path)
 
-                    yield AtsdBranchNode(path)
+                    yield AtsdBranchNode(path, folder)
 
             elif tokens[0] == 'metrics':
                 for folder in self.metric_folders:
@@ -133,7 +152,7 @@ class AtsdFinder(object):
                     path = pattern + '.' + folder
                     log.info('[AtsdFinder] path = ' +  path)
 
-                    yield AtsdBranchNode(path)
+                    yield AtsdBranchNode(path, folder)
 
         elif len(tokens) == 2:
 
@@ -151,17 +170,18 @@ class AtsdFinder(object):
 
                 response = requests.get(url, auth=self.auth)
 
-                #log.info('[AtsdFinder] response = ' + response.text)
+                log.info('[AtsdFinder] response = ' + response.text)
                 log.info('[AtsdFinder] status = ' + unicode(response.status_code))
 
                 for smth in response.json():
 
                     if not other:
 
-                        path = pattern + '.' + unicode(smth['name']).replace('.', '_.').encode('punycode')[:-1]
+                        name = unicode(smth['name']).encode('punycode')[:-1]
+                        path = pattern + '.' + full_quote(name)
                         log.info('[AtsdFinder] path = ' + path)
 
-                        yield AtsdBranchNode(path)
+                        yield AtsdBranchNode(path, name)
 
                     else:
 
@@ -185,10 +205,11 @@ class AtsdFinder(object):
 
                         if not matches:
 
-                            path = pattern + '.' + unicode(smth['name']).replace('.', '_.').encode('punycode')[:-1]
+                            name = unicode(smth['name']).encode('punycode')[:-1]
+                            path = pattern + '.' + full_quote(name)
                             log.info('[AtsdFinder] path = ' + path)
 
-                            yield AtsdBranchNode(path)
+                            yield AtsdBranchNode(path, name)
 
         elif len(tokens) == 3:
 
@@ -204,10 +225,11 @@ class AtsdFinder(object):
 
                 for metric in response.json():
 
-                    path = pattern + '.' + unicode(metric['name']).replace('.', '_.').encode('punycode')[:-1]
+                    name = unicode(metric['name']).encode('punycode')[:-1]
+                    path = pattern + '.' + full_quote(name)
                     log.info('[AtsdFinder] path = ' + path)
 
-                    yield AtsdBranchNode(path)
+                    yield AtsdBranchNode(path, name)
 
             elif tokens[0] == 'metrics':
 
@@ -227,10 +249,11 @@ class AtsdFinder(object):
 
                 for entity in entities:
 
-                    path = pattern + '.' + unicode(entity).replace('.', '_.').encode('punycode')[:-1]
+                    name = unicode(entity).encode('punycode')[:-1]
+                    path = pattern + '.' + full_quote(name)
                     log.info('[AtsdFinder] path = ' + path)
-
-                    yield AtsdBranchNode(path)
+                    
+                    yield AtsdBranchNode(path, name)
 
         elif len(tokens) > 3 and not tokens[-1] in self.interval_names:
 
@@ -272,6 +295,8 @@ class AtsdFinder(object):
             true_tag_combos = []
 
             found = False
+            
+            names = []
 
             for tag_combo in tag_combos:
 
@@ -291,13 +316,17 @@ class AtsdFinder(object):
 
                             found = True
 
-                            path = pattern + '.' + unicode(tag_name + ':' + tag_combo[tag_name]) \
-                                .replace('.', '_.') \
-                                .replace(' ', 'vvv_')
-                            log.info('[AtsdFinder] path = ' + path)
-
-                            yield AtsdBranchNode(path)
+                            name = unicode(tag_name + ':' + tag_combo[tag_name])
                             
+                            if not name in names:
+                            
+                                names.append(name)
+                            
+                                path = pattern + '.' + full_quote(name)
+                                log.info('[AtsdFinder] path = ' + path)
+                                
+                                yield AtsdBranchNode(path, name)
+                                
                             break
                             
             if not found:
@@ -315,7 +344,7 @@ class AtsdFinder(object):
                     except:
                         reader = None
                     
-                    yield AtsdLeafNode(path, reader)
+                    yield AtsdLeafNode(path, interval_name, reader)
                     
         else:
 
@@ -341,4 +370,4 @@ class AtsdFinder(object):
             except:
                 reader = None
             
-            yield AtsdLeafNode(pattern, reader)
+            yield AtsdLeafNode(pattern, '', reader)
