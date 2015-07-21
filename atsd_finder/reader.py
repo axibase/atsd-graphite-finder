@@ -2,6 +2,7 @@ from graphite.intervals import Interval, IntervalSet
 import requests
 import json
 import urlparse
+import urllib
 from graphite.local_settings import ATSD_CONF
 try:
     from graphite.logger import log
@@ -179,8 +180,10 @@ class AtsdReader(object):
 
         log.info('[AtsdReader] getting_intervals')
 
-        metric = self._request('GET', 'metrics/' + self.metric_name)
-        entity = self._request('GET', 'entities/' + self.entity_name)
+        metric = self._request('GET',
+                               'metrics/' + urllib.quote(self.metric_name, ''))
+        entity = self._request('GET',
+                               'entities/' + urllib.quote(self.entity_name, ''))
 
         end_time = max(metric['lastInsertTime'], entity['lastInsertTime'])
 
