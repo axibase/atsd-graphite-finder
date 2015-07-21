@@ -83,7 +83,7 @@ class AtsdReader(object):
                  '_session',
                  '_context',
                  'tags',
-                 'step',
+                 'default_step',
                  'statistic')
 
     def __init__(self, entity, metric, tags, step, statistic):
@@ -94,7 +94,7 @@ class AtsdReader(object):
         #: `dict` tags, in format {`str`: `str`}
         self.tags = tags
         #: `Number` seconds, if 0 raw data
-        self.step = step
+        self.default_step = step
         #: :class:`.AggregateType`
         self.statistic = statistic
 
@@ -119,11 +119,16 @@ class AtsdReader(object):
         """
 
         log.info(
-            '[AtsdReader] fetching:  start_time={:f} end_time= {:f} step={:f}'
-            .format(start_time, end_time, self.step)
+            '[AtsdReader] fetching:  start_time={:f} end_time= {:f}'
+            .format(start_time, end_time)
         )
 
-        series = self._query_series(start_time, end_time)
+        if self.default_step:
+            step = self.default_step
+        else:
+            step = self._get_appropriate_step(start_time, end_time)
+
+        series = self._query_series(start_time, end_time, step)
 
         log.info('[AtsdReader] get series of {:d} samples'.format(len(series)))
 
@@ -132,11 +137,11 @@ class AtsdReader(object):
         if len(series) == 1:
             return (start_time, end_time, end_time - start_time), [series[0]['v']]
 
-        if self.step:
+        if step:
             # data regularized, send as is
             time_info = (float(series[0]['t']) / 1000,
-                         float(series[-1]['t']) / 1000 + self.step,
-                         self.step)
+                         float(series[-1]['t']) / 1000 + step,
+                         step)
 
             values = [sample['v'] for sample in series]
         else:
@@ -146,7 +151,19 @@ class AtsdReader(object):
 
         return time_info, values
 
-    def _query_series(self, start_time, end_time):
+    def _get_appropriate_step(self, start_time, end_time):
+
+        INTERVAL_SCHEMA = {24 * 60 * 60: 0,}
+
+        return 0
+
+    def _query_series(self, start_time, end_time, step):
+        """
+        :param start_time: `Number` seconds
+        :param end_time: `Number` seconds
+        :param step: `Number` seconds
+        :return: series data [{t,v}]
+        """
 
         tags_query = {}
         for key in self.tags:
@@ -164,12 +181,12 @@ class AtsdReader(object):
             ]
         }
 
-        if self.step:
+        if step:
             # request regularized data
             data['queries'][0]['aggregate'] = {
-                'types': [self.statistic],
+                'type': self.statistic,
                 'interpolate': 'STEP',
-                'interval': {'count': self.step, 'unit': 'SECOND'}
+                'interval': {'count': step, 'unit': 'SECOND'}
             }
 
         resp = self._request('POST', 'series', data)
