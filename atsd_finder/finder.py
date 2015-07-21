@@ -94,8 +94,11 @@ class AtsdFinder(object):
     interval_names = ['detail', '1 min', '1 hour', '1 day']
 
     def __init__(self):
-
-        log.info('[AtsdFinder] init ' + unicode(os.getppid()) + ' : ' + unicode(os.getpid()))
+        
+        try:
+            log.info('[AtsdFinder] init pid = ' + unicode(os.getppid()) + ' : ' + unicode(os.getpid()))
+        except AttributeError:
+            log.info('[AtsdFinder] init pid = ' + unicode(os.getpid()))
 
         self.url_base = ATSD_CONF['url'] + '/api/v1'
         self.auth = (ATSD_CONF['username'], ATSD_CONF['password'])
