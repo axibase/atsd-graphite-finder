@@ -9,6 +9,30 @@ except:
     import default_logger as log
 
 
+class Statistics(object):
+    COUNT = 'COUNT'
+    MIN = 'MIN'
+    MAX = 'MAX'
+    AVG = 'AVG'
+    SUM = 'SUM'
+    PERCENTILE_999 = 'PERCENTILE_999'
+    PERCENTILE_995 = 'PERCENTILE_995'
+    PERCENTILE_99 = 'PERCENTILE_99'
+    PERCENTILE_95 = 'PERCENTILE_95'
+    PERCENTILE_90 = 'PERCENTILE_90'
+    PERCENTILE_75 = 'PERCENTILE_75'
+    PERCENTILE_50 = 'PERCENTILE_50'
+    MEDIAN = 'MEDIAN'
+    STANDARD_DEVIATION = 'STANDARD_DEVIATION'
+
+
+def _round_step(step):
+    """example: 5003 -> 5000
+    """
+    # TODO: add logic
+    return step
+
+
 def _median_delta(values):
     """get array of delta, find median value
     values should be sorted
@@ -37,8 +61,7 @@ def _regularize(series):
     #     print(sample)
     times = [sample['t'] / 1000.0 for sample in series]
     step = _median_delta(times)
-    # print(step)
-    # TODO: round step
+    step = _round_step(step)
 
     start_time = series[0]['t'] / 1000.0
     end_time = series[-1]['t'] / 1000.0 + step
@@ -76,9 +99,10 @@ class AtsdReader(object):
                  '_session',
                  '_context',
                  'tags',
-                 'step')
+                 'step',
+                 'statistic')
 
-    def __init__(self, entity, metric, tags, step):
+    def __init__(self, entity, metric, tags, step, statistic=Statistics.AVG):
         #: `str` entity name
         self.entity_name = entity
         #: `str` metric name
@@ -87,6 +111,8 @@ class AtsdReader(object):
         self.tags = tags
         #: `Number` seconds, if 0 raw data
         self.step = step
+        #: :class:`.AggregateType`
+        self.statistic = statistic
 
         #: :class:`.Session`
         self._session = requests.Session()
@@ -157,7 +183,7 @@ class AtsdReader(object):
         if self.step:
             # request regularized data
             data['queries'][0]['group'] = {
-                'type': 'AVG',
+                'type': self.statistic,
                 'interpolate': 'STEP',
                 'interval': {'count': self.step, 'unit': 'SECOND'}
             }

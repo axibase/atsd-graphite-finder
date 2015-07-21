@@ -1,6 +1,7 @@
 import unittest
 import time
 import atsd_finder
+from atsd_finder.reader import Statistics
 
 
 class TestAtsdFinder(unittest.TestCase):
@@ -16,6 +17,30 @@ class TestAtsdFinder(unittest.TestCase):
         end = res[0][1]
         step = res[0][2]
         self.assertEqual((end - start) / step, float(len(res[1])))
+
+    def test_reader_group(self):
+        reader = atsd_finder.AtsdReader('nurswgvml006',
+                                        'cpu_busy',
+                                        tags={},
+                                        step=60*60,
+                                        statistic=Statistics.MIN)
+        time_info_min, values_min = reader.fetch(time.time() - 60 * 60, time.time())
+
+        reader = atsd_finder.AtsdReader('nurswgvml006',
+                                        'cpu_busy',
+                                        tags={},
+                                        step=60*60,
+                                        statistic=Statistics.MAX)
+        time_info_max, values_max = reader.fetch(time.time() - 2 * 60 * 60, time.time())
+
+        value_min = values_min[-1]
+        if time_info_min[1] == time_info_max[1]:
+            value_max = values_max[-1]
+        else:
+            value_max = values_max[-2]
+
+        self.assertGreater(value_max, value_min)
+
 
     def test_reader_fetch_raw(self):
         reader = atsd_finder.AtsdReader('safeway',

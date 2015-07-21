@@ -370,4 +370,4 @@ class AtsdFinder(object):
             except:
                 reader = None
             
-            yield AtsdLeafNode(pattern, '', reader)
+            yield AtsdLeafNode(pattern, interval, reader)
