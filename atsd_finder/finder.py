@@ -35,23 +35,6 @@ class AtsdLeafNode(LeafNode):
         self.label = label
         self.local = False
     
-    
-def arr2tags(arr):
-
-    tags = {}
-
-    log.info('[AtsdFinder] tags = ' + unicode(arr))
-                
-    for tag in arr:
-    
-        tag_nv = tag['value'].split(':')
-        log.info('[AtsdFinder] tag n:v = ' + unicode(tag_nv))
-        tags[tag_nv[0]] = tag_nv[1]
-
-    log.info('[AtsdFinder] parsed tags = ' + unicode(tags))
-
-    return tags
-    
   
 def quote(string):
 
@@ -73,18 +56,18 @@ def get_info(pattern):
     info = {
         'tags': {}
     }
-
-    pattern = pattern[:-2] if pattern[-1] == '*' else pattern
         
     tokens = pattern.split('.')
     tokens[:] = [json.loads(unquote(token)) for token in tokens] if pattern != '' else []
+    
+    info['tokens'] = len(tokens)
     
     specific = ['tag', 'const']
     
     for token in tokens:
         
-        token_type = token['type']
-        token_value = token['value']
+        token_type = token.keys()[0]
+        token_value = token[token_type]
         
         if not token_type in specific:
         
@@ -92,9 +75,8 @@ def get_info(pattern):
             
         elif token_type == 'tag':
         
-            tag_nv = token_value.split(':')
-            tag_name = tag_nv[0]
-            tag_value = tag_nv[1]
+            tag_name = token_value.keys()[0]
+            tag_value = token_value[tag_name]
         
             info['tags'][tag_name] = tag_value
             
@@ -150,40 +132,29 @@ class AtsdFinder(object):
             self.metric_folders = 'abcdefghijklmnopqrstuvwxyz_'
 
     def find_nodes(self, query):
-    
-        info = get_info(query.pattern)
 
         log.info('[AtsdFinder] finding nodes: query = ' + unicode(query.pattern))
-
+        
         pattern = query.pattern[:-2] if query.pattern[-1] == '*' else query.pattern
         
-        tokens = pattern.split('.')
-        tokens[:] = [json.loads(unquote(token)) for token in tokens] if pattern != '' else []
-            
-        log.info('[AtsdFinder] ' + unicode(len(tokens)) + ' tokens')
+        info = get_info(pattern)
 
-        if not tokens:
+        if info['tokens'] == 0:
 
             for root in self.roots:
             
-                cell = {
-                    'type': 'type',
-                    'value': root
-                }
+                cell = {'type': root}
                 
                 log.info('[AtsdFinder] path = ' + root)
 
                 yield AtsdBranchNode(full_quote(json.dumps(cell)), root)
 
-        elif len(tokens) == 1:
+        elif info['tokens'] == 1:
 
             if info['type'] == 'entities':
                 for folder in self.entity_folders:
                 
-                    cell = {
-                        'type': 'entity folder',
-                        'value': folder
-                    }
+                    cell = {'entity folder': folder}
 
                     path = pattern + '.' + full_quote(json.dumps(cell))
                     log.info('[AtsdFinder] path = ' +  path)
@@ -193,17 +164,14 @@ class AtsdFinder(object):
             elif info['type'] == 'metrics':
                 for folder in self.metric_folders:
                 
-                    cell = {
-                        'type': 'metric folder',
-                        'value': folder
-                    }
+                    cell = {'metric folder': folder}
 
                     path = pattern + '.' + full_quote(json.dumps(cell))
                     log.info('[AtsdFinder] path = ' +  path)
 
                     yield AtsdBranchNode(path, folder)
 
-        elif len(tokens) == 2:
+        elif info['tokens'] == 2:
         
             if info['type'] == 'entities':
                 folder = info['entity folder']
@@ -231,15 +199,9 @@ class AtsdFinder(object):
                     label = unicode(smth['name']).encode('punycode')[:-1]
                     
                     if info['type'] == 'entities':
-                        cell = {
-                            'type': 'entity',
-                            'value': label
-                        }
+                        cell = {'entity': label}
                     elif info['type'] == 'metrics':
-                        cell = {
-                            'type': 'metric',
-                            'value': label
-                        }
+                        cell = {'metric': label}
                     
                     path = pattern + '.' + full_quote(json.dumps(cell))
                     log.info('[AtsdFinder] path = ' + path)
@@ -271,22 +233,16 @@ class AtsdFinder(object):
                         label = unicode(smth['name']).encode('punycode')[:-1]
                         
                         if info['type'] == 'entities':
-                            cell = {
-                                'type': 'entity',
-                                'value': label
-                            }
+                            cell = {'entity': label}
                         elif info['type'] == 'metrics':
-                            cell = {
-                                'type': 'metric',
-                                'value': label
-                            }
+                            cell = {'metric': label}
                         
                         path = pattern + '.' + full_quote(json.dumps(cell))
                         log.info('[AtsdFinder] path = ' + path)
 
                         yield AtsdBranchNode(path, label)
 
-        elif len(tokens) == 3:
+        elif info['tokens'] == 3:
 
             if info['type'] == 'entities':
 
@@ -302,10 +258,7 @@ class AtsdFinder(object):
 
                     label = unicode(metric['name']).encode('punycode')[:-1]
                     
-                    cell = {
-                        'type': 'metric',
-                        'value': label
-                    }
+                    cell = {'metric': label}
                     
                     path = pattern + '.' + full_quote(json.dumps(cell))
                     log.info('[AtsdFinder] path = ' + path)
@@ -332,17 +285,14 @@ class AtsdFinder(object):
 
                     label = unicode(entity).encode('punycode')[:-1]
                     
-                    cell = {
-                        'type': 'entity',
-                        'value': label
-                    }
+                    cell = {'entity': label}
                     
                     path = pattern + '.' + full_quote(json.dumps(cell))
                     log.info('[AtsdFinder] path = ' + path)
                     
                     yield AtsdBranchNode(path, label)
 
-        elif len(tokens) > 3 and not 'interval' in info:
+        elif info['tokens'] > 3 and not 'interval' in info:
 
             entity = info['entity']
             metric = info['metric']
@@ -396,12 +346,9 @@ class AtsdFinder(object):
 
                             found = True
 
-                            label = unicode(tag_name + ':' + tag_combo[tag_name])
+                            label = unicode(tag_name + ': ' + tag_combo[tag_name])
                             
-                            cell = {
-                                'type': 'tag',
-                                'value': label
-                            }
+                            cell = {'tag': {tag_name : tag_combo[tag_name]}}
                             
                             if not label in labels:
                             
@@ -418,10 +365,7 @@ class AtsdFinder(object):
             
                 for interval_name in self.interval_names:
                 
-                    cell = {
-                        'type': 'interval',
-                        'value': interval_name
-                    }
+                    cell = {'interval': interval_name}
                 
                     path = pattern + '.' +  full_quote(json.dumps(cell))
                     log.info('[AtsdFinder] path = ' + path)
@@ -429,10 +373,7 @@ class AtsdFinder(object):
                     interval = self.intervals[self.interval_names.index(interval_name)]
                     log.info('[AtsdFinder] interval = ' + unicode(interval))
                     
-                    try:
-                        reader = AtsdReader(entity, metric, tags, interval)
-                    except:
-                        reader = None
+                    reader = AtsdReader(entity, metric, tags, interval)
                     
                     yield AtsdLeafNode(path, interval_name, reader)
                     
@@ -446,9 +387,6 @@ class AtsdFinder(object):
             interval = self.intervals[self.interval_names.index(info['interval'])]
             log.info('[AtsdFinder] interval = ' + unicode(interval))
             
-            try:
-                reader = AtsdReader(entity, metric, tags, interval)
-            except:
-                reader = None
+            reader = AtsdReader(entity, metric, tags, interval)
             
             yield AtsdLeafNode(pattern, interval, reader)
