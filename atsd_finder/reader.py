@@ -10,6 +10,11 @@ except:
     import default_logger as log
 
 
+def _get_interval_schema():
+    return {24 * 60 * 60: 0,
+            2 * 24 * 60 * 60: 60}
+
+
 def _round_step(step):
     """example: 5003 -> 5000
     """
@@ -84,7 +89,8 @@ class AtsdReader(object):
                  '_context',
                  'tags',
                  'default_step',
-                 'statistic')
+                 'statistic',
+                 '_interval_schema')
 
     def __init__(self, entity, metric, tags, step, statistic):
         #: `str` entity name
@@ -105,6 +111,8 @@ class AtsdReader(object):
 
         #: `str` api path
         self._context = urlparse.urljoin(ATSD_CONF['url'], 'api/v1/')
+
+        self._interval_schema = _get_interval_schema()
 
         log.info('[AtsdReader] init: entity=' + unicode(entity)
                  + ' metric=' + unicode(metric)
@@ -153,9 +161,8 @@ class AtsdReader(object):
 
     def _get_appropriate_step(self, start_time, end_time):
         interval = end_time - start_time
-        interval_schema = {24 * 60 * 60: 60,}
 
-        intervals = interval_schema.keys()
+        intervals = self._interval_schema.keys()
         intervals.sort()
 
         step = 0
@@ -164,7 +171,7 @@ class AtsdReader(object):
             if interval < i:
                 break
 
-            step = interval_schema[i]
+            step = self._interval_schema[i]
 
         return step
 
