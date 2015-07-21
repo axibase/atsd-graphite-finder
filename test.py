@@ -1,7 +1,6 @@
 import unittest
 import time
 import atsd_finder
-from atsd_finder.reader import Statistics
 
 
 class TestAtsdFinder(unittest.TestCase):
@@ -10,7 +9,7 @@ class TestAtsdFinder(unittest.TestCase):
         reader = atsd_finder.AtsdReader('atsd',
                                         'metric_gets_per_second',
                                         {'host': 'NURSWGVML007'},
-                                        5)
+                                        5, 'AVG')
         res = reader.fetch(time.time() - 24 * 60 * 60, time.time())
 
         start = res[0][0]
@@ -23,14 +22,14 @@ class TestAtsdFinder(unittest.TestCase):
                                         'cpu_busy',
                                         tags={},
                                         step=60*60,
-                                        statistic=Statistics.MIN)
+                                        statistic='MIN')
         time_info_min, values_min = reader.fetch(time.time() - 60 * 60, time.time())
 
         reader = atsd_finder.AtsdReader('nurswgvml006',
                                         'cpu_busy',
                                         tags={},
                                         step=60*60,
-                                        statistic=Statistics.MAX)
+                                        statistic='MAX')
         time_info_max, values_max = reader.fetch(time.time() - 2 * 60 * 60, time.time())
 
         value_min = values_min[-1]
@@ -41,7 +40,6 @@ class TestAtsdFinder(unittest.TestCase):
 
         self.assertGreater(value_max, value_min)
 
-
     def test_reader_fetch_raw(self):
         reader = atsd_finder.AtsdReader('safeway',
                                         'retail_price',
@@ -51,7 +49,7 @@ class TestAtsdFinder(unittest.TestCase):
                                          u'quantity': u'18.0',
                                          u'unit': u'oz',
                                          u'zip_code': u'20032'},
-                                        0)
+                                        0, 'AVG')
         res = reader.fetch(time.time() - 24 * 60 * 60, time.time())
 
         start = res[0][0]
@@ -63,8 +61,8 @@ class TestAtsdFinder(unittest.TestCase):
         reader = atsd_finder.AtsdReader('atsd',
                                         'metric_gets_per_second',
                                         {'host': 'NURSWGVML007'},
-                                        1)
+                                        1, 'AVG')
         reader.get_intervals()
 
     def test_finder(self):
-        finder = atsd_finder.AtsdFinder()
+        atsd_finder.AtsdFinder()

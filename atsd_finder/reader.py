@@ -9,23 +9,6 @@ except:
     import default_logger as log
 
 
-class Statistics(object):
-    COUNT = 'COUNT'
-    MIN = 'MIN'
-    MAX = 'MAX'
-    AVG = 'AVG'
-    SUM = 'SUM'
-    PERCENTILE_999 = 'PERCENTILE_999'
-    PERCENTILE_995 = 'PERCENTILE_995'
-    PERCENTILE_99 = 'PERCENTILE_99'
-    PERCENTILE_95 = 'PERCENTILE_95'
-    PERCENTILE_90 = 'PERCENTILE_90'
-    PERCENTILE_75 = 'PERCENTILE_75'
-    PERCENTILE_50 = 'PERCENTILE_50'
-    MEDIAN = 'MEDIAN'
-    STANDARD_DEVIATION = 'STANDARD_DEVIATION'
-
-
 def _round_step(step):
     """example: 5003 -> 5000
     """
@@ -102,7 +85,7 @@ class AtsdReader(object):
                  'step',
                  'statistic')
 
-    def __init__(self, entity, metric, tags, step, statistic=Statistics.AVG):
+    def __init__(self, entity, metric, tags, step, statistic):
         #: `str` entity name
         self.entity_name = entity
         #: `str` metric name
@@ -182,8 +165,8 @@ class AtsdReader(object):
 
         if self.step:
             # request regularized data
-            data['queries'][0]['group'] = {
-                'type': self.statistic,
+            data['queries'][0]['aggregate'] = {
+                'types': [self.statistic],
                 'interpolate': 'STEP',
                 'interval': {'count': self.step, 'unit': 'SECOND'}
             }
