@@ -91,7 +91,7 @@ class AtsdFinder(object):
 
     roots = {'entities', 'metrics'}
     intervals = [0, 60, 3600, 86400]
-    interval_names = ['detail', '1_min', '1_hour', '1_day']
+    interval_names = ['detail', '1 min', '1 hour', '1 day']
 
     def __init__(self):
 
@@ -329,8 +329,8 @@ class AtsdFinder(object):
             if not found:
             
                 for interval_name in self.interval_names:
-            
-                    path = pattern + '.' + interval_name
+                
+                    path = pattern + '.' +  full_quote(interval_name)
                     log.info('[AtsdFinder] path = ' + path)
                     
                     interval = self.intervals[self.interval_names.index(interval_name)]
