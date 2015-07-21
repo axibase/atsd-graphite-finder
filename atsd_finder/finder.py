@@ -130,9 +130,6 @@ class AtsdFinder(object):
             for root in self.roots:
 
                 log.info('[AtsdFinder] path = ' + root)
-                
-                ATSD_CONF['path_map'][root] = [root]
-                #log.info('[AtsdFinder] path map = ' + unicode(ATSD_CONF['path_map']))
 
                 yield AtsdBranchNode(root, root)
 
