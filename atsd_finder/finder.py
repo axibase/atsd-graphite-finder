@@ -3,14 +3,12 @@ import urllib
 from graphite.local_settings import ATSD_CONF
 import re
 import os
-import traceback
 
 from .reader import AtsdReader
 try:
     from graphite.logger import log
 except:
     import default_logger as log
-
 
 
 class AtsdNode(object):
@@ -74,12 +72,12 @@ def arr2tags(arr):
   
 def quote(string):
 
-    return urllib.quote(string)
+    return urllib.quote(string, safe = '')
     
     
 def full_quote(string):
 
-    return urllib.quote(string).replace('.', '%2E')
+    return urllib.quote(string, safe = '').replace('.', '%2E')
     
     
 def unquote(string):
@@ -96,9 +94,9 @@ class AtsdFinder(object):
     def __init__(self):
         
         try:
-            log.info('[AtsdFinder] init pid = ' + unicode(os.getppid()) + ' : ' + unicode(os.getpid()))
+            log.info('[AtsdFinder] init: pid = ' + unicode(os.getppid()) + ' : ' + unicode(os.getpid()))
         except AttributeError:
-            log.info('[AtsdFinder] init pid = ' + unicode(os.getpid()))
+            log.info('[AtsdFinder] init: pid = ' + unicode(os.getpid()))
 
         self.url_base = ATSD_CONF['url'] + '/api/v1'
         self.auth = (ATSD_CONF['username'], ATSD_CONF['password'])
@@ -114,14 +112,10 @@ class AtsdFinder(object):
             self.metric_folders = 'abcdefghijklmnopqrstuvwxyz_'
 
     def find_nodes(self, query):
-    
-        log.info('[AtsdFinder] stack trace: ' + unicode('\n'.join(traceback.format_stack())))
 
         log.info('[AtsdFinder] finding nodes: query=' + unicode(query.pattern))
-        #log.info('[AtsdFinder] finding nodes: query=' + unicode(query))
 
         pattern = query.pattern[:-2] if query.pattern[-1] == '*' else query.pattern
-        #pattern = query[:-2] if query[-1] == '*' else query
         
         tokens = pattern.split('.')
         tokens[:] = [unquote(token) for token in tokens]
@@ -160,17 +154,16 @@ class AtsdFinder(object):
 
                 if not tokens[1] or tokens[1][0] == "_":
                     other = True
-                    url = self.url_base + '/' + urllib.quote(tokens[0], safe = '')
+                    url = self.url_base + '/' + quote(tokens[0])
                 else:
                     other = False
-                    url = self.url_base + '/' + urllib.quote(tokens[0], safe = '') + '?expression=name%20like%20%27' + urllib.quote(tokens[1], safe = '') + '*%27'
+                    url = self.url_base + '/' + quote(tokens[0]) + '?expression=name%20like%20%27' + quote(tokens[1]) + '*%27'
 
-                # url = self.url_base + '/entities/safeway/metrics?limit=2'
                 log.info('[AtsdFinder] request_url = ' + unicode(url) + '')
 
                 response = requests.get(url, auth=self.auth)
 
-                log.info('[AtsdFinder] response = ' + response.text)
+                #log.info('[AtsdFinder] response = ' + response.text)
                 log.info('[AtsdFinder] status = ' + unicode(response.status_code))
 
                 for smth in response.json():
@@ -215,7 +208,7 @@ class AtsdFinder(object):
 
             if tokens[0] == 'entities':
 
-                url = self.url_base + '/entities/' + urllib.quote(tokens[2]) + '/metrics'
+                url = self.url_base + '/entities/' + quote(tokens[2]) + '/metrics'
                 log.info('[AtsdFinder] request_url = ' + url)
 
                 response = requests.get(url, auth=self.auth)
@@ -233,7 +226,7 @@ class AtsdFinder(object):
 
             elif tokens[0] == 'metrics':
 
-                url = self.url_base + '/metrics/' + urllib.quote(tokens[2], safe='')+ '/entity-and-tags'
+                url = self.url_base + '/metrics/' + quote(tokens[2])+ '/entity-and-tags'
                 log.info('[AtsdFinder] request_url = ' + url)
 
                 response = requests.get(url, auth=self.auth)
@@ -269,7 +262,7 @@ class AtsdFinder(object):
 
             tags = arr2tags(tokens[4:])
 
-            url = self.url_base + '/metrics/' + urllib.quote(metric, safe='') + '/entity-and-tags'
+            url = self.url_base + '/metrics/' + quote(metric) + '/entity-and-tags'
             log.info('[AtsdFinder] request_url = ' + url)
 
             response = requests.get(url, auth=self.auth)
