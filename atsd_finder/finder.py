@@ -84,12 +84,11 @@ def get_info(pattern):
     
     return info
 
-
 class AtsdFinder(object):
 
     roots = {'entities', 'metrics'}
-    intervals = [0, 60, 3600, 86400]
-    interval_names = ['detail', '1 min', '1 hour', '1 day']
+    intervals = [60, 3600, 86400]
+    interval_names = ['1 min', '1 hour', '1 day']
     aggregators = {
         'Detail'                : 'detail',
         'Count'                 : 'count',
@@ -110,28 +109,26 @@ class AtsdFinder(object):
         'Weighted average'      : 'wavg',
         'Weighted time average' : 'wtavg',
         'Standard deviation'    : 'standard_deviation'
-    }
+    };
 
     def __init__(self):
-
+        
         try:
-            pid = unicode(os.getppid()) + ' : ' + unicode(os.getpid())
+            log.info('[AtsdFinder] init: pid = ' + unicode(os.getppid()) + ' : ' + unicode(os.getpid()))
         except AttributeError:
-            pid = unicode(os.getpid())
-
-        log.info('[AtsdFinder] init: pid = ' + pid)
+            log.info('[AtsdFinder] init: pid = ' + unicode(os.getpid()))
 
         self.url_base = ATSD_CONF['url'] + '/api/v1'
         self.auth = (ATSD_CONF['username'], ATSD_CONF['password'])
 
         try:
             self.entity_folders = ATSD_CONF['entity_folders']
-        except KeyError:
+        except:
             self.entity_folders = 'abcdefghijklmnopqrstuvwxyz_'
 
         try:
             self.metric_folders = ATSD_CONF['metric_folders']
-        except KeyError:
+        except:
             self.metric_folders = 'abcdefghijklmnopqrstuvwxyz_'
 
     def find_nodes(self, query):
@@ -295,7 +292,7 @@ class AtsdFinder(object):
                     
                     yield AtsdBranchNode(path, label)
 
-        elif info['tokens'] > 3 and not 'interval' in info:
+        elif info['tokens'] > 3 and not 'detail' in info:
 
             entity = info['entity']
             metric = info['metric']
@@ -366,30 +363,76 @@ class AtsdFinder(object):
                             
             if not found:
             
-                for interval_name in self.interval_names:
+                cell = {'detail': True}
                 
-                    cell = {'interval': interval_name}
+                path = pattern + '.' +  full_quote(json.dumps(cell))
+                log.info('[AtsdFinder] path = ' + path)
                 
+                reader = AtsdReader(entity, metric, tags, 0)
+                
+                yield AtsdLeafNode(path, u'detail', reader)
+                
+                cell = {'detail': False}
+                
+                path = pattern + '.' +  full_quote(json.dumps(cell))
+                log.info('[AtsdFinder] path = ' + path)
+                
+                yield AtsdBranchNode(path, u'stats')
+                
+        elif not 'aggregator' in info:
+        
+            if info['detail']:
+            
+                entity = info['entity']
+                metric = info['metric']
+                tags = info['tags']
+                
+                reader = AtsdReader(entity, metric, tags, 0)
+                
+                yield AtsdLeafNode(pattern, u'detail', reader)
+            
+            else:
+            
+                for aggregator in self.aggregators:
+                
+                    cell = {'aggregator': aggregator}
+                    
                     path = pattern + '.' +  full_quote(json.dumps(cell))
                     log.info('[AtsdFinder] path = ' + path)
                     
-                    interval = self.intervals[self.interval_names.index(interval_name)]
-                    log.info('[AtsdFinder] interval = ' + unicode(interval))
-                    
-                    reader = AtsdReader(entity, metric, tags, interval)
-                    
-                    yield AtsdLeafNode(path, interval_name, reader)
-                    
-        else:
+                    yield AtsdBranchNode(path, aggregator)
+            
+        elif not 'interval' in info:
 
             entity = info['entity']
             metric = info['metric']
-                
             tags = info['tags']
+            aggregator = self.aggregators[info['aggregator']].upper()
             
+            for interval_name in self.interval_names:
+                
+                cell = {'interval': interval_name}
+            
+                path = pattern + '.' +  full_quote(json.dumps(cell))
+                log.info('[AtsdFinder] path = ' + path)
+                
+                interval = self.intervals[self.interval_names.index(interval_name)]
+                log.info('[AtsdFinder] aggregator = ' + aggregator + ', interval = ' + unicode(interval))
+                
+                reader = AtsdReader(entity, metric, tags, interval, aggregator)
+                
+                yield AtsdLeafNode(path, interval_name, reader)
+                
+        else:
+        
+            entity = info['entity']
+            metric = info['metric']
+            tags = info['tags']
+            aggregator = self.aggregators[info['aggregator']].upper()
+        
             interval = self.intervals[self.interval_names.index(info['interval'])]
-            log.info('[AtsdFinder] interval = ' + unicode(interval))
+            log.info('[AtsdFinder] aggregator = ' + aggregator + ', interval = ' + unicode(interval))
             
-            reader = AtsdReader(entity, metric, tags, interval)
+            reader = AtsdReader(entity, metric, tags, interval, aggregator)
             
             yield AtsdLeafNode(pattern, interval, reader)
