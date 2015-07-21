@@ -84,6 +84,7 @@ def get_info(pattern):
     
     return info
 
+
 class AtsdFinder(object):
 
     roots = {'entities', 'metrics'}
@@ -109,26 +110,28 @@ class AtsdFinder(object):
         'Weighted average'      : 'wavg',
         'Weighted time average' : 'wtavg',
         'Standard deviation'    : 'standard_deviation'
-    };
+    }
 
     def __init__(self):
-        
+
         try:
-            log.info('[AtsdFinder] init: pid = ' + unicode(os.getppid()) + ' : ' + unicode(os.getpid()))
+            pid = unicode(os.getppid()) + ' : ' + unicode(os.getpid())
         except AttributeError:
-            log.info('[AtsdFinder] init: pid = ' + unicode(os.getpid()))
+            pid = unicode(os.getpid())
+
+        log.info('[AtsdFinder] init: pid = ' + pid)
 
         self.url_base = ATSD_CONF['url'] + '/api/v1'
         self.auth = (ATSD_CONF['username'], ATSD_CONF['password'])
 
         try:
             self.entity_folders = ATSD_CONF['entity_folders']
-        except:
+        except KeyError:
             self.entity_folders = 'abcdefghijklmnopqrstuvwxyz_'
 
         try:
             self.metric_folders = ATSD_CONF['metric_folders']
-        except:
+        except KeyError:
             self.metric_folders = 'abcdefghijklmnopqrstuvwxyz_'
 
     def find_nodes(self, query):
