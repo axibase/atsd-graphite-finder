@@ -3,6 +3,7 @@ import json
 import urlparse
 import urllib
 import ConfigParser
+import fnmatch
 import re
 
 from graphite.intervals import Interval, IntervalSet
@@ -81,40 +82,43 @@ def _regularize(series):
 
 
 class IntervalSchema(object):
-    __slots__ = ('_interval_step_map',)
+    # _map: interval -> step
 
-    SCHEMA_FILE_NAME = 'c:/Users/Egor/IdeaProjects/atsd-graphite-finder/atsd_finder/interval-schema.conf'
+    __slots__ = ('_map',)
+
+    CONF_NAME = 'c:/Users/Egor/IdeaProjects/atsd-graphite-finder/atsd_finder/interval-schema.conf'
+
+    _config = ConfigParser.RawConfigParser()
+    _config.read(CONF_NAME)
 
     def __init__(self, metric):
         """
         :param metric: `str` metric name
         """
 
-        config = ConfigParser.RawConfigParser()
-        config.read(IntervalSchema.SCHEMA_FILE_NAME)
-
         def section_matches(section):
 
-            if config.has_option(section, 'metric-pattern'):
-                return re.match(config.get(section, 'metric-pattern'), metric)
+            if self._config.has_option(section, 'metric-pattern'):
+                metric_pattern = self._config.get(section, 'metric-pattern')
+                return fnmatch.fnmatch(metric, metric_pattern)
             return True
 
-        for section in config.sections():
+        for section in self._config.sections():
             if section_matches(section):
 
                 try:
                     # intervals has form 'x:y, z:t'
-                    intervals = config.get(section, 'retentions')  # str
+                    intervals = self._config.get(section, 'retentions')  # str
                     items = re.split('\s*,\s*', intervals)  # list of str
-                    pairs = (item.split(':') for item in items)  # gen of str tuples
-                    self._interval_step_map = dict((int(b), int(a)) for a, b in pairs)
+                    pairs = (item.split(':') for item in items)  # str tuples
+                    self._map = dict((int(b), int(a)) for a, b in pairs)
                     return
 
                 except Exception as e:
                     log.exception('could not parse section {:s} in {:s}'
-                                  .format(section, IntervalSchema.SCHEMA_FILE_NAME), e)
+                                  .format(section, IntervalSchema.CONF_NAME), e)
 
-        self._interval_step_map = {}
+        self._map = {}
 
     def get_step(self, interval):
         """find step for current interval using interval schema
@@ -124,12 +128,12 @@ class IntervalSchema(object):
         :return: step `Number` seconds
         """
 
-        intervals = self._interval_step_map.keys()
+        intervals = self._map.keys()
         intervals.sort()
 
         step = 0
         for i in intervals:
-            step = self._interval_step_map[i]
+            step = self._map[i]
 
             if interval < i:
                 break
