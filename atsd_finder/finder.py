@@ -5,36 +5,15 @@ import re
 import os
 
 from graphite.local_settings import ATSD_CONF
-from graphite.node import BranchNode, LeafNode
 
 from .reader import AtsdReader
 try:
     from graphite.logger import log
 except:
     import default_logger as log
-
-
-class AtsdBranchNode(BranchNode):
-
-    __slots__ = ('label',)
-
-    def __init__(self, path, label):
     
-        super(AtsdBranchNode, self).__init__(path)
-        self.label = label
-        self.local = False
+from .node import AtsdBranchNode, AtsdLeafNode
 
-
-class AtsdLeafNode(LeafNode):
-
-    __slots__ = ('label',)
-
-    def __init__(self, path, label, reader):
-    
-        super(AtsdLeafNode, self).__init__(path, reader)
-        self.label = label
-        self.local = False
-    
   
 def quote(string):
 
@@ -155,6 +134,10 @@ class AtsdFinder(object):
                 log.info('[AtsdFinder] path = ' + root)
 
                 yield AtsdBranchNode(full_quote(json.dumps(cell)), root)
+                
+        elif 'type' not in info:
+        
+            raise StopIteration
 
         elif info['tokens'] == 1:
 
