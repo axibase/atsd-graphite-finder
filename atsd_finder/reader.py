@@ -1,8 +1,11 @@
-from graphite.intervals import Interval, IntervalSet
 import requests
 import json
 import urlparse
 import urllib
+import ConfigParser
+import re
+
+from graphite.intervals import Interval, IntervalSet
 from graphite.local_settings import ATSD_CONF
 try:
     from graphite.logger import log
@@ -10,9 +13,46 @@ except:
     import default_logger as log
 
 
-def _get_interval_schema():
-    return {24 * 60 * 60: 0,
-            2 * 24 * 60 * 60: 60}
+INTERVAL_SCHEMA_FILE_NAME = 'interval-schema.conf'
+
+
+def _get_interval_schema(node):
+
+    config = ConfigParser.RawConfigParser()
+    config.read(INTERVAL_SCHEMA_FILE_NAME)
+
+    def section_matches(section):
+
+        is_mach = True
+        for option, value in config.items(section):
+
+            if option is 'metric':
+                is_mach = is_mach and re.match(value, node.metric)
+
+            elif option is 'entity':
+                is_mach = is_mach and re.match(value, node.entiy)
+
+            elif option.startswith('tags.'):
+                _, tag = option.split('.', 1)
+
+                if tag in node.tags:
+                    is_mach = is_mach and re.match(value, node.tags[tag])
+                else:
+                    is_mach = False
+
+        return is_mach
+
+    for section in config.sections():
+        if section_matches(section):
+            # intervals has form 'x:y, z:t'
+            try:
+                intervals = config.get(section, 'intervals')  # str
+                items = re.split('\s*,\s*', intervals)  # list of str
+                pairs = (item.split(':') for item in items)  # gen of str tuples
+                return dict((int(a), int(b)) for a, b in pairs)
+            except Exception as e:
+                log.exception('could not parse section {:s} in {:s}'
+                              .format(section, INTERVAL_SCHEMA_FILE_NAME), e)
 
 
 def _round_step(step):
@@ -82,23 +122,31 @@ def _regularize(series):
     return time_info, values
 
 
+class Node(object):
+
+    slots = ('entity', 'metric', 'tags')
+
+    def __init__(self, entity, metric, tags):
+        # TODO check that node exists, get unique combination of fields
+        #: `str`
+        self.entity = entity
+        #: `str`
+        self.metric = metric
+        #: `dict`
+        self.tags = tags
+
+
 class AtsdReader(object):
-    __slots__ = ('entity_name',
-                 'metric_name',
+    __slots__ = ('_node',
                  '_session',
                  '_context',
-                 'tags',
                  'default_step',
                  'statistic',
                  '_interval_schema')
 
     def __init__(self, entity, metric, tags, step, statistic='DETAIL'):
-        #: `str` entity name
-        self.entity_name = entity
-        #: `str` metric name
-        self.metric_name = metric
-        #: `dict` tags, in format {`str`: `str`}
-        self.tags = tags
+        #: :class:`.Node`
+        self._node = Node(entity, metric, tags)
         #: `Number` seconds, if 0 raw data
         self.default_step = step
         #: :class:`.AggregateType`
@@ -112,7 +160,7 @@ class AtsdReader(object):
         #: `str` api path
         self._context = urlparse.urljoin(ATSD_CONF['url'], 'api/v1/')
 
-        self._interval_schema = _get_interval_schema()
+        self._interval_schema = _get_interval_schema(self._node)
 
         log.info('[AtsdReader] init: entity=' + unicode(entity)
                  + ' metric=' + unicode(metric)
@@ -190,16 +238,16 @@ class AtsdReader(object):
         """
 
         tags_query = {}
-        for key in self.tags:
-            tags_query[key] = [self.tags[key]]
+        for key in self._node.tags:
+            tags_query[key] = [self._node.tags[key]]
 
         data = {
             'queries': [
                 {
                     'startTime': int(start_time * 1000),
                     'endTime': int(end_time * 1000),
-                    'entity': self.entity_name,
-                    'metric': self.metric_name,
+                    'entity': self._node.entity,
+                    'metric': self._node.metric,
                     'tags': tags_query
                 }
             ]
@@ -225,9 +273,9 @@ class AtsdReader(object):
         log.info('[AtsdReader] getting_intervals')
 
         metric = self._request('GET',
-                               'metrics/' + urllib.quote(self.metric_name, ''))
+                               'metrics/' + urllib.quote(self._node.metric, ''))
         entity = self._request('GET',
-                               'entities/' + urllib.quote(self.entity_name, ''))
+                               'entities/' + urllib.quote(self._node.entity, ''))
 
         end_time = max(metric['lastInsertTime'], entity['lastInsertTime'])
 
