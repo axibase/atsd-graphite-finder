@@ -5,36 +5,15 @@ import re
 import os
 
 from graphite.local_settings import ATSD_CONF
-from graphite.node import BranchNode, LeafNode
 
 from .reader import AtsdReader
 try:
     from graphite.logger import log
 except:
     import default_logger as log
-
-
-class AtsdBranchNode(BranchNode):
-
-    __slots__ = ('label',)
-
-    def __init__(self, path, label):
     
-        super(AtsdBranchNode, self).__init__(path)
-        self.label = label
-        self.local = False
+from .node import AtsdBranchNode, AtsdLeafNode
 
-
-class AtsdLeafNode(LeafNode):
-
-    __slots__ = ('label',)
-
-    def __init__(self, path, label, reader):
-    
-        super(AtsdLeafNode, self).__init__(path, reader)
-        self.label = label
-        self.local = False
-    
   
 def quote(string):
 
@@ -90,29 +69,10 @@ class AtsdFinder(object):
     roots = {'entities', 'metrics'}
     intervals = [60, 3600, 86400]
     interval_names = ['1 min', '1 hour', '1 day']
-    aggregators = {
-        'Detail'                : 'detail',
-        'Count'                 : 'count',
-        'Minimum'               : 'min',
-        'Maximum'               : 'max',
-        'Average'               : 'avg',
-        'Median'                : 'median',
-        'Sum'                   : 'sum',
-        'Percentile 99.9%'      : 'percentile_999',
-        'Percentile 99.5%'      : 'percentile_995',
-        'Percentile 99%'        : 'percentile_99',
-        'Percentile 95%'        : 'percentile_95',
-        'Percentile 90%'        : 'percentile_90',
-        'Percentile 75%'        : 'percentile_75',
-        'First value'           : 'first',
-        'Last value'            : 'last',
-        'Delta'                 : 'delta',
-        'Weighted average'      : 'wavg',
-        'Weighted time average' : 'wtavg',
-        'Standard deviation'    : 'standard_deviation'
-    }
 
     def __init__(self):
+    
+        self.name = '[AtsdFinder]'
 
         try:
             # noinspection PyUnresolvedReferences
@@ -120,7 +80,7 @@ class AtsdFinder(object):
         except AttributeError:
             pid = unicode(os.getpid())
 
-        log.info('[AtsdFinder] init: pid = ' + pid)
+        self.log('init: pid = ' + pid)
 
         self.url_base = ATSD_CONF['url'] + '/api/v1'
         self.auth = (ATSD_CONF['username'], ATSD_CONF['password'])
@@ -134,10 +94,38 @@ class AtsdFinder(object):
             self.metric_folders = ATSD_CONF['metric_folders']
         except KeyError:
             self.metric_folders = 'abcdefghijklmnopqrstuvwxyz_'
+            
+        try:
+            self.aggregators = ATSD_CONF['aggregators']
+        except KeyError:
+            self.aggregators = {
+                'Count'                 : 'count',
+                'Minimum'               : 'min',
+                'Maximum'               : 'max',
+                'Average'               : 'avg',
+                'Median'                : 'median',
+                'Sum'                   : 'sum',
+                'Percentile 99.9%'      : 'percentile_999',
+                'Percentile 99.5%'      : 'percentile_995',
+                'Percentile 99%'        : 'percentile_99',
+                'Percentile 95%'        : 'percentile_95',
+                'Percentile 90%'        : 'percentile_90',
+                'Percentile 75%'        : 'percentile_75',
+                'First value'           : 'first',
+                'Last value'            : 'last',
+                'Delta'                 : 'delta',
+                'Weighted average'      : 'wavg',
+                'Weighted time average' : 'wtavg',
+                'Standard deviation'    : 'standard_deviation'
+            }
+
+    def log(self, message):
+    
+        log.info('[' + self.__class__.__name__ + '] ' + message)
 
     def find_nodes(self, query):
 
-        log.info('[AtsdFinder] finding nodes: query = ' + unicode(query.pattern))
+        self.log('finding nodes: query = ' + unicode(query.pattern))
         
         pattern = query.pattern[:-2] if query.pattern[-1] == '*' else query.pattern
         
@@ -149,9 +137,13 @@ class AtsdFinder(object):
             
                 cell = {'type': root}
                 
-                log.info('[AtsdFinder] path = ' + root)
+                # self.log('path = ' + root)
 
                 yield AtsdBranchNode(full_quote(json.dumps(cell)), root)
+                
+        elif 'type' not in info:
+        
+            raise StopIteration
 
         elif info['tokens'] == 1:
 
@@ -161,7 +153,7 @@ class AtsdFinder(object):
                     cell = {'entity folder': folder}
 
                     path = pattern + '.' + full_quote(json.dumps(cell))
-                    log.info('[AtsdFinder] path = ' + path)
+                    # self.log('path = ' + path)
 
                     yield AtsdBranchNode(path, folder)
 
@@ -171,7 +163,7 @@ class AtsdFinder(object):
                     cell = {'metric folder': folder}
 
                     path = pattern + '.' + full_quote(json.dumps(cell))
-                    log.info('[AtsdFinder] path = ' + path)
+                    # self.log('path = ' + path)
 
                     yield AtsdBranchNode(path, folder)
 
@@ -189,12 +181,12 @@ class AtsdFinder(object):
                 other = False
                 url = self.url_base + '/' + quote(info['type']) + '?expression=name%20like%20%27' + quote(folder) + '*%27'
 
-            log.info('[AtsdFinder] request_url = ' + unicode(url) + '')
+            self.log('request_url = ' + unicode(url) + '')
 
             response = requests.get(url, auth=self.auth)
 
-            #log.info('[AtsdFinder] response = ' + response.text)
-            log.info('[AtsdFinder] status = ' + unicode(response.status_code))
+            #self.log('response = ' + response.text)
+            self.log('status = ' + unicode(response.status_code))
 
             for smth in response.json():
 
@@ -208,7 +200,7 @@ class AtsdFinder(object):
                         cell = {'metric': label}
                     
                     path = pattern + '.' + full_quote(json.dumps(cell))
-                    log.info('[AtsdFinder] path = ' + path)
+                    # self.log('path = ' + path)
 
                     yield AtsdBranchNode(path, label)
 
@@ -242,7 +234,7 @@ class AtsdFinder(object):
                             cell = {'metric': label}
                         
                         path = pattern + '.' + full_quote(json.dumps(cell))
-                        log.info('[AtsdFinder] path = ' + path)
+                        # self.log('path = ' + path)
 
                         yield AtsdBranchNode(path, label)
 
@@ -251,12 +243,12 @@ class AtsdFinder(object):
             if info['type'] == 'entities':
 
                 url = self.url_base + '/entities/' + quote(info['entity']) + '/metrics'
-                log.info('[AtsdFinder] request_url = ' + url)
+                self.log('request_url = ' + url)
 
                 response = requests.get(url, auth=self.auth)
 
-                #log.info('[AtsdFinder] response = ' + response.text)
-                log.info('[AtsdFinder] status = ' + unicode(response.status_code))
+                #self.log('response = ' + response.text)
+                self.log('status = ' + unicode(response.status_code))
 
                 for metric in response.json():
 
@@ -265,19 +257,19 @@ class AtsdFinder(object):
                     cell = {'metric': label}
                     
                     path = pattern + '.' + full_quote(json.dumps(cell))
-                    log.info('[AtsdFinder] path = ' + path)
+                    # self.log('path = ' + path)
 
                     yield AtsdBranchNode(path, label)
 
             elif info['type'] == 'metrics':
 
                 url = self.url_base + '/metrics/' + quote(info['metric'])+ '/entity-and-tags'
-                log.info('[AtsdFinder] request_url = ' + url)
+                self.log('request_url = ' + url)
 
                 response = requests.get(url, auth=self.auth)
 
-                #log.info('[AtsdFinder] response = ' + response.text)
-                log.info('[AtsdFinder] status = ' + unicode(response.status_code))
+                #self.log('response = ' + response.text)
+                self.log('status = ' + unicode(response.status_code))
 
                 entities = set()
 
@@ -292,7 +284,7 @@ class AtsdFinder(object):
                     cell = {'entity': label}
                     
                     path = pattern + '.' + full_quote(json.dumps(cell))
-                    log.info('[AtsdFinder] path = ' + path)
+                    # self.log('path = ' + path)
                     
                     yield AtsdBranchNode(path, label)
 
@@ -304,12 +296,12 @@ class AtsdFinder(object):
             tags = info['tags']
 
             url = self.url_base + '/metrics/' + quote(metric) + '/entity-and-tags'
-            log.info('[AtsdFinder] request_url = ' + url)
+            self.log('request_url = ' + url)
 
             response = requests.get(url, auth=self.auth)
 
-            #log.info('[AtsdFinder] response = ' + response.text)
-            log.info('[AtsdFinder] status = ' + unicode(response.status_code))
+            #self.log('response = ' + response.text)
+            self.log('status = ' + unicode(response.status_code))
 
             tag_combos = []
 
@@ -359,7 +351,7 @@ class AtsdFinder(object):
                                 labels.append(label)
                             
                                 path = pattern + '.' + full_quote(json.dumps(cell))
-                                log.info('[AtsdFinder] path = ' + path)
+                                # self.log('path = ' + path)
                                 
                                 yield AtsdBranchNode(path, label)
                                 
@@ -370,7 +362,7 @@ class AtsdFinder(object):
                 cell = {'detail': True}
                 
                 path = pattern + '.' + full_quote(json.dumps(cell))
-                log.info('[AtsdFinder] path = ' + path)
+                # self.log('path = ' + path)
                 
                 reader = AtsdReader(entity, metric, tags, 0)
                 
@@ -379,7 +371,7 @@ class AtsdFinder(object):
                 cell = {'detail': False}
                 
                 path = pattern + '.' + full_quote(json.dumps(cell))
-                log.info('[AtsdFinder] path = ' + path)
+                # self.log('path = ' + path)
                 
                 yield AtsdBranchNode(path, u'stats')
                 
@@ -402,7 +394,7 @@ class AtsdFinder(object):
                     cell = {'aggregator': aggregator}
                     
                     path = pattern + '.' + full_quote(json.dumps(cell))
-                    log.info('[AtsdFinder] path = ' + path)
+                    # self.log('path = ' + path)
                     
                     yield AtsdBranchNode(path, aggregator)
             
@@ -418,10 +410,10 @@ class AtsdFinder(object):
                 cell = {'interval': interval_name}
             
                 path = pattern + '.' + full_quote(json.dumps(cell))
-                log.info('[AtsdFinder] path = ' + path)
+                # self.log('path = ' + path)
                 
                 interval = self.intervals[self.interval_names.index(interval_name)]
-                log.info('[AtsdFinder] aggregator = ' + aggregator + ', interval = ' + unicode(interval))
+                self.log('aggregator = ' + aggregator + ', interval = ' + unicode(interval))
                 
                 reader = AtsdReader(entity, metric, tags, interval, aggregator)
                 
@@ -435,7 +427,7 @@ class AtsdFinder(object):
             aggregator = self.aggregators[info['aggregator']].upper()
         
             interval = self.intervals[self.interval_names.index(info['interval'])]
-            log.info('[AtsdFinder] aggregator = ' + aggregator + ', interval = ' + unicode(interval))
+            self.log('aggregator = ' + aggregator + ', interval = ' + unicode(interval))
             
             reader = AtsdReader(entity, metric, tags, interval, aggregator)
             
