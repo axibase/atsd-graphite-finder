@@ -92,7 +92,7 @@ class AtsdReader(object):
                  'statistic',
                  '_interval_schema')
 
-    def __init__(self, entity, metric, tags, step, statistic):
+    def __init__(self, entity, metric, tags, step, statistic='DETAIL'):
         #: `str` entity name
         self.entity_name = entity
         #: `str` metric name
