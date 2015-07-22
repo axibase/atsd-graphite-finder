@@ -137,7 +137,7 @@ class AtsdFinder(object):
             
                 cell = {'type': root}
                 
-                self.log('path = ' + root)
+                # self.log('path = ' + root)
 
                 yield AtsdBranchNode(full_quote(json.dumps(cell)), root)
                 
@@ -153,7 +153,7 @@ class AtsdFinder(object):
                     cell = {'entity folder': folder}
 
                     path = pattern + '.' + full_quote(json.dumps(cell))
-                    self.log('path = ' + path)
+                    # self.log('path = ' + path)
 
                     yield AtsdBranchNode(path, folder)
 
@@ -163,7 +163,7 @@ class AtsdFinder(object):
                     cell = {'metric folder': folder}
 
                     path = pattern + '.' + full_quote(json.dumps(cell))
-                    self.log('path = ' + path)
+                    # self.log('path = ' + path)
 
                     yield AtsdBranchNode(path, folder)
 
@@ -200,7 +200,7 @@ class AtsdFinder(object):
                         cell = {'metric': label}
                     
                     path = pattern + '.' + full_quote(json.dumps(cell))
-                    self.log('path = ' + path)
+                    # self.log('path = ' + path)
 
                     yield AtsdBranchNode(path, label)
 
@@ -234,7 +234,7 @@ class AtsdFinder(object):
                             cell = {'metric': label}
                         
                         path = pattern + '.' + full_quote(json.dumps(cell))
-                        self.log('path = ' + path)
+                        # self.log('path = ' + path)
 
                         yield AtsdBranchNode(path, label)
 
@@ -257,7 +257,7 @@ class AtsdFinder(object):
                     cell = {'metric': label}
                     
                     path = pattern + '.' + full_quote(json.dumps(cell))
-                    self.log('path = ' + path)
+                    # self.log('path = ' + path)
 
                     yield AtsdBranchNode(path, label)
 
@@ -284,7 +284,7 @@ class AtsdFinder(object):
                     cell = {'entity': label}
                     
                     path = pattern + '.' + full_quote(json.dumps(cell))
-                    self.log('path = ' + path)
+                    # self.log('path = ' + path)
                     
                     yield AtsdBranchNode(path, label)
 
@@ -351,7 +351,7 @@ class AtsdFinder(object):
                                 labels.append(label)
                             
                                 path = pattern + '.' + full_quote(json.dumps(cell))
-                                self.log('path = ' + path)
+                                # self.log('path = ' + path)
                                 
                                 yield AtsdBranchNode(path, label)
                                 
@@ -362,7 +362,7 @@ class AtsdFinder(object):
                 cell = {'detail': True}
                 
                 path = pattern + '.' + full_quote(json.dumps(cell))
-                self.log('path = ' + path)
+                # self.log('path = ' + path)
                 
                 reader = AtsdReader(entity, metric, tags, 0)
                 
@@ -371,7 +371,7 @@ class AtsdFinder(object):
                 cell = {'detail': False}
                 
                 path = pattern + '.' + full_quote(json.dumps(cell))
-                self.log('path = ' + path)
+                # self.log('path = ' + path)
                 
                 yield AtsdBranchNode(path, u'stats')
                 
@@ -394,7 +394,7 @@ class AtsdFinder(object):
                     cell = {'aggregator': aggregator}
                     
                     path = pattern + '.' + full_quote(json.dumps(cell))
-                    self.log('path = ' + path)
+                    # self.log('path = ' + path)
                     
                     yield AtsdBranchNode(path, aggregator)
             
@@ -410,7 +410,7 @@ class AtsdFinder(object):
                 cell = {'interval': interval_name}
             
                 path = pattern + '.' + full_quote(json.dumps(cell))
-                self.log('path = ' + path)
+                # self.log('path = ' + path)
                 
                 interval = self.intervals[self.interval_names.index(interval_name)]
                 self.log('aggregator = ' + aggregator + ', interval = ' + unicode(interval))

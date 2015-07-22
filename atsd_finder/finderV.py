@@ -3,6 +3,7 @@ import urllib
 import json
 import re
 import os
+import copy
 
 from graphite.local_settings import ATSD_CONF
 
@@ -109,7 +110,7 @@ class AtsdFinderV(object):
                 cell = {'build': build_name}
                 
                 path = full_quote(json.dumps(cell))
-                self.log('path = ' + path)
+                # self.log('path = ' + path)
             
                 yield AtsdBranchNode(path, build_name)
             
@@ -150,13 +151,13 @@ class AtsdFinderV(object):
                 
                     if not last:
                     
-                        self.log('path = ' + path)
+                        # self.log('path = ' + path)
 
                         yield AtsdBranchNode(path, label)
                     
                     elif 'metric' in info:
                     
-                        self.log('path = ' + path)
+                        # self.log('path = ' + path)
                     
                         entity = info['entity'] if 'entity' in info else '*'
                         metric = info['metric']
@@ -191,7 +192,7 @@ class AtsdFinderV(object):
                             cell = {'entity': unicode(entity['name'])}
                             
                             path = pattern + '.' + full_quote(json.dumps(cell))
-                            self.log('path = ' + path)
+                            # self.log('path = ' + path)
 
                             yield AtsdBranchNode(path, label)
                         
@@ -219,7 +220,7 @@ class AtsdFinderV(object):
                             cell = {'entity': unicode(entity)}
                             
                             path = pattern + '.' + full_quote(json.dumps(cell))
-                            self.log('path = ' + path)
+                            # self.log('path = ' + path)
                             
                             if not last:
                             
@@ -260,7 +261,7 @@ class AtsdFinderV(object):
                         cell = {'metric': unicode(metric['name'])}
                         
                         path = pattern + '.' + full_quote(json.dumps(cell))
-                        self.log('path = ' + path)
+                        # self.log('path = ' + path)
                         
                         if not last:
 
@@ -276,6 +277,72 @@ class AtsdFinderV(object):
                             reader = AtsdReader(entity, metric, tags, interval, aggregator)
                             
                             yield AtsdLeafNode(path, label, reader)
+                            
+                elif token_type == 'tag':
+                
+                    if 'metric' in info:
+                
+                        url = self.url_base + '/metrics/' + quote(info['metric'])+ '/entity-and-tags'
+                        self.log('request_url = ' + url)
+
+                        response = requests.get(url, auth=self.auth)
+                        self.log('status = ' + unicode(response.status_code))
+
+                        tag_values = [];
+
+                        for combo in response.json():
+                        
+                            tags = combo['tags']
+
+                            if 'entity' in info and info['entity'] != combo['entity']:
+                                continue
+                                
+                            if not token_value in tags:
+                                continue
+                            
+                            matches = True
+                            
+                            for tag_name in tags:
+                                
+                                if tag_name in info['tags'] and info['tags'][tag_name] != tags[tag_name]:
+                                    matches = False
+                                    break
+                                    
+                            tag_value = tags[token_value]
+                            
+                            if matches and not tag_value in tag_values:
+                                self.log(tag_value)
+                                    
+                            if matches and not tag_value in tag_values:
+                                
+                                tag_values.append(tag_value)
+                            
+                                label = unicode(tag_value).encode('punycode')[:-1]
+                            
+                                cell = {'tag': {token_value: tag_value}}
+                            
+                                path = pattern + '.' + full_quote(json.dumps(cell))
+                                # self.log('path = ' + path)
+                            
+                                if not last:
+                                
+                                    yield AtsdBranchNode(path, label)
+                                
+                                else:
+                                
+                                    tags = copy.deepcopy(info['tags'])
+                                    tags.update({token_value: tag_value})
+                                
+                                    entity = info['entity'] if 'entity' in info else '*'
+                                    metric = info['metric']
+                                    interval = info['interval'] if 'interval' in info else 0
+                                    aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
+                                    
+                                    reader = AtsdReader(entity, metric, tags, interval, aggregator)
+                                    
+                                    self.log('label = ' + label)
+                                        
+                                    yield AtsdLeafNode(path, label, reader)
                         
                 elif token_type == 'aggregator':
                 
@@ -286,7 +353,7 @@ class AtsdFinderV(object):
                         cell = {'aggregator': unicode(token_value[aggregator])}
                         
                         path = pattern + '.' + full_quote(json.dumps(cell))
-                        self.log('path = ' + path)
+                        # self.log('path = ' + path)
                         
                         if not last:
 
@@ -312,7 +379,7 @@ class AtsdFinderV(object):
                         cell = {'interval': token_value[interval]}
                         
                         path = pattern + '.' + full_quote(json.dumps(cell))
-                        self.log('path = ' + path)
+                        # self.log('path = ' + path)
 
                         if not last:
 
