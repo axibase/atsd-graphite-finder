@@ -13,7 +13,7 @@ except:
     import default_logger as log
 
 
-INTERVAL_SCHEMA_FILE_NAME = 'interval-schema.conf'
+INTERVAL_SCHEMA_FILE_NAME = 'c:/Users/Egor/IdeaProjects/atsd-graphite-finder/atsd_finder/interval-schema.conf'
 
 
 def _get_interval_schema(node):
@@ -23,36 +23,24 @@ def _get_interval_schema(node):
 
     def section_matches(section):
 
-        is_mach = True
-        for option, value in config.items(section):
-
-            if option is 'metric':
-                is_mach = is_mach and re.match(value, node.metric)
-
-            elif option is 'entity':
-                is_mach = is_mach and re.match(value, node.entiy)
-
-            elif option.startswith('tags.'):
-                _, tag = option.split('.', 1)
-
-                if tag in node.tags:
-                    is_mach = is_mach and re.match(value, node.tags[tag])
-                else:
-                    is_mach = False
-
-        return is_mach
+        if config.has_option(section, 'metric-pattern'):
+            return re.match(config.get(section, 'metric-pattern'), node.metric)
+        return True
 
     for section in config.sections():
         if section_matches(section):
-            # intervals has form 'x:y, z:t'
+
             try:
-                intervals = config.get(section, 'intervals')  # str
+                # intervals has form 'x:y, z:t'
+                intervals = config.get(section, 'retentions')  # str
                 items = re.split('\s*,\s*', intervals)  # list of str
                 pairs = (item.split(':') for item in items)  # gen of str tuples
-                return dict((int(a), int(b)) for a, b in pairs)
+                return dict((int(b), int(a)) for a, b in pairs)
             except Exception as e:
                 log.exception('could not parse section {:s} in {:s}'
                               .format(section, INTERVAL_SCHEMA_FILE_NAME), e)
+
+    return {}
 
 
 def _round_step(step):
@@ -159,7 +147,7 @@ class AtsdReader(object):
 
         #: `str` api path
         self._context = urlparse.urljoin(ATSD_CONF['url'], 'api/v1/')
-
+        #: `dict` interval -> step
         self._interval_schema = _get_interval_schema(self._node)
 
         log.info('[AtsdReader] init: entity=' + unicode(entity)

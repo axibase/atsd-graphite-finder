@@ -12,8 +12,8 @@ class TestAtsdFinder(unittest.TestCase):
                                         step=0,
                                         statistic='DETAIL')
         time_info_day, _ = reader.fetch(now - 24 * 60 * 60 - 1, now)
-
         time_info_hour, _ = reader.fetch(now - 60 * 60, now)
+
         print time_info_day[2], time_info_hour[2]
         self.assertGreater(time_info_day[2], time_info_hour[2])
 
