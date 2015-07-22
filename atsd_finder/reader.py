@@ -86,10 +86,12 @@ class IntervalSchema(object):
 
     __slots__ = ('_map',)
 
-    CONF_NAME = 'c:/Users/Egor/IdeaProjects/atsd-graphite-finder/atsd_finder/interval-schema.conf'
+    # CONF_NAME = 'c:/Users/Egor/IdeaProjects/atsd-graphite-finder/atsd_finder/interval-schema.conf'
+    CONF_NAME = '/opt/graphite/conf/interval-schema.conf'
 
     _config = ConfigParser.RawConfigParser()
     _config.read(CONF_NAME)
+    log.info('[IntervalSchema] sections=' + str(_config.sections()))
 
     def __init__(self, metric):
         """
@@ -135,7 +137,7 @@ class IntervalSchema(object):
         for i in intervals:
             step = self._map[i]
 
-            if interval < i:
+            if interval <= i:
                 break
 
         return step
@@ -261,13 +263,14 @@ class AtsdReader(object):
                  'statistic',
                  '_interval_schema')
 
-    def __init__(self, entity, metric, tags, step, statistic='DETAIL'):
+    def __init__(self, entity, metric, tags, step, statistic='AVG'):
         #: :class:`.Node`
         self._instance = Instance(entity, metric, tags)
         #: `Number` seconds, if 0 raw data
         self.default_step = step
+
         #: :class:`.AggregateType`
-        self.statistic = statistic
+        self.statistic = statistic if step else 'AVG'
 
         #: :class:`.IntervalSchema`
         self._interval_schema = IntervalSchema(metric)
@@ -316,7 +319,8 @@ class AtsdReader(object):
         else:
             time_info, values = _regularize(series)
 
-        log.info('[AtsdReader] fetched {:d} values'.format(len(values)))
+        log.info('[AtsdReader] fetched {:d} values, step={:f}'
+                 .format(len(values), time_info[2]))
 
         return time_info, values
 

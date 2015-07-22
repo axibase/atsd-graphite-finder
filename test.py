@@ -11,11 +11,19 @@ class TestAtsdFinder(unittest.TestCase):
                                         tags={},
                                         step=0,
                                         statistic='DETAIL')
-        time_info_day, _ = reader.fetch(now - 24 * 60 * 60 - 1, now)
+        time_info_day, vals_day = reader.fetch(now - 2 * 60 * 60, now)
         time_info_hour, _ = reader.fetch(now - 60 * 60, now)
 
-        print time_info_day[2], time_info_hour[2]
         self.assertGreater(time_info_day[2], time_info_hour[2])
+
+        reader_group = atsd_finder.AtsdReader('nurswgvml006',
+                                        'cpu_busy',
+                                        tags={},
+                                        step=60,
+                                        statistic='AVG')
+        time_info_group, vals_group = reader_group.fetch(now - 2 * 60 * 60, now)
+
+        self.assertListEqual(vals_group, vals_day)
 
     def test_reader_fetch(self):
         now = time.time()
