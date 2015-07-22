@@ -116,7 +116,7 @@ class IntervalSchema(object):
 
         self._interval_step_map = {}
 
-    def get_appropriate_step(self, interval):
+    def get_step(self, interval):
         """find step for current interval using interval schema
         return step of lowest schema interval that bigger than current
 
@@ -142,143 +142,22 @@ class Instance(object):
     series unique identifier
     """
 
-    __slots__ = ('entity', 'metric', 'tags')
+    __slots__ = ('entity_name', 'metric_name', 'tags', '_session', '_context')
 
-    def __init__(self, entity, metric, tags):
+    def __init__(self, entity_name, metric_name, tags):
         # TODO check that node exists, get unique combination of fields
         #: `str`
-        self.entity = entity
+        self.entity_name = entity_name
         #: `str`
-        self.metric = metric
+        self.metric_name = metric_name
         #: `dict`
         self.tags = tags
-
-
-class AtsdReader(object):
-    __slots__ = ('_node',
-                 '_session',
-                 '_context',
-                 'default_step',
-                 'statistic',
-                 '_interval_schema')
-
-    def __init__(self, entity, metric, tags, step, statistic='DETAIL'):
-        #: :class:`.Node`
-        self._node = Instance(entity, metric, tags)
-        #: `Number` seconds, if 0 raw data
-        self.default_step = step
-        #: :class:`.AggregateType`
-        self.statistic = statistic
-
         #: :class:`.Session`
         self._session = requests.Session()
         self._session.auth = (ATSD_CONF['username'],
                               ATSD_CONF['password'])
-
         #: `str` api path
         self._context = urlparse.urljoin(ATSD_CONF['url'], 'api/v1/')
-        #: :class:`.IntervalSchema`
-        self._interval_schema = IntervalSchema(metric)
-
-        log.info('[AtsdReader] init: entity=' + unicode(entity)
-                 + ' metric=' + unicode(metric)
-                 + ' tags=' + unicode(tags)
-                 + ' url=' + unicode(ATSD_CONF['url']))
-
-    def fetch(self, start_time, end_time):
-        """fetch time series
-
-        :param start_time: `Number` seconds
-        :param end_time: `Number` seconds
-        """
-
-        log.info(
-            '[AtsdReader] fetching:  start_time={:f} end_time= {:f}'
-            .format(start_time, end_time)
-        )
-
-        if self.default_step:
-            step = self.default_step
-        else:
-            step = self._interval_schema.get_appropriate_step(end_time - start_time)
-
-        series = self._query_series(start_time, end_time, step)
-
-        log.info('[AtsdReader] get series of {:d} samples'.format(len(series)))
-
-        if not len(series):
-            return (start_time, end_time, end_time - start_time), [None]
-        if len(series) == 1:
-            return (start_time, end_time, end_time - start_time), [series[0]['v']]
-
-        if step:
-            # data regularized, send as is
-            time_info = (float(series[0]['t']) / 1000,
-                         float(series[-1]['t']) / 1000 + step,
-                         step)
-
-            values = [sample['v'] for sample in series]
-        else:
-            time_info, values = _regularize(series)
-
-        log.info('[AtsdReader] fetched {:d} values'.format(len(values)))
-
-        return time_info, values
-
-    def _query_series(self, start_time, end_time, step):
-        """
-        :param start_time: `Number` seconds
-        :param end_time: `Number` seconds
-        :param step: `Number` seconds
-        :return: series data [{t,v}]
-        """
-
-        tags_query = {}
-        for key in self._node.tags:
-            tags_query[key] = [self._node.tags[key]]
-
-        data = {
-            'queries': [
-                {
-                    'startTime': int(start_time * 1000),
-                    'endTime': int(end_time * 1000),
-                    'entity': self._node.entity,
-                    'metric': self._node.metric,
-                    'tags': tags_query
-                }
-            ]
-        }
-
-        if step:
-            # request regularized data
-            data['queries'][0]['aggregate'] = {
-                'type': self.statistic,
-                'interpolate': 'STEP',
-                'interval': {'count': step, 'unit': 'SECOND'}
-            }
-
-        resp = self._request('POST', 'series', data)
-
-        return resp['series'][0]['data']
-
-    def get_intervals(self):
-        """
-        :return: :class:`.IntervalSet`
-        """
-
-        log.info('[AtsdReader] getting_intervals')
-
-        metric = self._request('GET',
-                               'metrics/' + urllib.quote(self._node.metric, ''))
-        entity = self._request('GET',
-                               'entities/' + urllib.quote(self._node.entity, ''))
-
-        end_time = max(metric['lastInsertTime'], entity['lastInsertTime'])
-
-        retention = metric['retentionInterval']
-        start_time = (end_time - retention) if retention else 1
-
-        return IntervalSet([Interval(start_time, end_time)])
 
     def _request(self, method, path, data=None):
         """
@@ -316,3 +195,140 @@ class AtsdReader(object):
                                + str(response.status_code))
 
         return response.json()
+
+    def query_series(self, start_time, end_time, step, statistic):
+        """
+        :param start_time: `Number` seconds
+        :param end_time: `Number` seconds
+        :param step: `Number` seconds
+        :return: series data [{t,v}]
+        """
+
+        tags_query = {}
+        for key in self.tags:
+            tags_query[key] = [self.tags[key]]
+
+        data = {
+            'queries': [
+                {
+                    'startTime': int(start_time * 1000),
+                    'endTime': int(end_time * 1000),
+                    'entity': self.entity_name,
+                    'metric': self.metric_name,
+                    'tags': tags_query
+                }
+            ]
+        }
+
+        if step:
+            # request regularized data
+            data['queries'][0]['aggregate'] = {
+                'type': statistic,
+                'interpolate': 'STEP',
+                'interval': {'count': step, 'unit': 'SECOND'}
+            }
+
+        resp = self._request('POST', 'series', data)
+
+        return resp['series'][0]['data']
+
+    def get_metric(self):
+        """make meta api request
+
+        :return: parsed json response
+        """
+
+        return self._request('GET',
+                             'metrics/' + urllib.quote(self.metric_name, ''))
+
+    def get_entity(self):
+        """make meta api request
+
+        :return: parsed json response
+        """
+
+        return self._request('GET',
+                             'entities/' + urllib.quote(self.entity_name, ''))
+
+
+class AtsdReader(object):
+    __slots__ = ('_instance',
+                 'default_step',
+                 'statistic',
+                 '_interval_schema')
+
+    def __init__(self, entity, metric, tags, step, statistic='DETAIL'):
+        #: :class:`.Node`
+        self._instance = Instance(entity, metric, tags)
+        #: `Number` seconds, if 0 raw data
+        self.default_step = step
+        #: :class:`.AggregateType`
+        self.statistic = statistic
+
+        #: :class:`.IntervalSchema`
+        self._interval_schema = IntervalSchema(metric)
+
+        log.info('[AtsdReader] init: entity=' + unicode(entity)
+                 + ' metric=' + unicode(metric)
+                 + ' tags=' + unicode(tags)
+                 + ' url=' + unicode(ATSD_CONF['url']))
+
+    def fetch(self, start_time, end_time):
+        """fetch time series
+
+        :param start_time: `Number` seconds
+        :param end_time: `Number` seconds
+        """
+
+        log.info(
+            '[AtsdReader] fetching:  start_time={:f} end_time= {:f}'
+            .format(start_time, end_time)
+        )
+
+        if self.default_step:
+            step = self.default_step
+        else:
+            step = self._interval_schema.get_step(end_time - start_time)
+
+        series = self._instance.query_series(start_time,
+                                             end_time,
+                                             step,
+                                             self.statistic)
+
+        log.info('[AtsdReader] get series of {:d} samples'.format(len(series)))
+
+        if not len(series):
+            return (start_time, end_time, end_time - start_time), [None]
+        if len(series) == 1:
+            return (start_time, end_time, end_time - start_time), [series[0]['v']]
+
+        if step:
+            # data regularized, send as is
+            time_info = (float(series[0]['t']) / 1000,
+                         float(series[-1]['t']) / 1000 + step,
+                         step)
+
+            values = [sample['v'] for sample in series]
+        else:
+            time_info, values = _regularize(series)
+
+        log.info('[AtsdReader] fetched {:d} values'.format(len(values)))
+
+        return time_info, values
+
+    def get_intervals(self):
+        """
+        :return: :class:`.IntervalSet`
+        """
+
+        log.info('[AtsdReader] getting_intervals')
+
+        metric = self._instance.get_metric()
+        entity = self._instance.get_entity()
+
+        end_time = max(metric['lastInsertTime'], entity['lastInsertTime'])
+
+        retention = metric['retentionInterval']
+        start_time = (end_time - retention) if retention else 1
+
+        return IntervalSet([Interval(start_time, end_time)])
