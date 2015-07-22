@@ -13,36 +13,6 @@ except:
     import default_logger as log
 
 
-INTERVAL_SCHEMA_FILE_NAME = 'c:/Users/Egor/IdeaProjects/atsd-graphite-finder/atsd_finder/interval-schema.conf'
-
-
-def _get_interval_schema(node):
-
-    config = ConfigParser.RawConfigParser()
-    config.read(INTERVAL_SCHEMA_FILE_NAME)
-
-    def section_matches(section):
-
-        if config.has_option(section, 'metric-pattern'):
-            return re.match(config.get(section, 'metric-pattern'), node.metric)
-        return True
-
-    for section in config.sections():
-        if section_matches(section):
-
-            try:
-                # intervals has form 'x:y, z:t'
-                intervals = config.get(section, 'retentions')  # str
-                items = re.split('\s*,\s*', intervals)  # list of str
-                pairs = (item.split(':') for item in items)  # gen of str tuples
-                return dict((int(b), int(a)) for a, b in pairs)
-            except Exception as e:
-                log.exception('could not parse section {:s} in {:s}'
-                              .format(section, INTERVAL_SCHEMA_FILE_NAME), e)
-
-    return {}
-
-
 def _round_step(step):
     """example: 5003 -> 5000
     """
@@ -110,9 +80,69 @@ def _regularize(series):
     return time_info, values
 
 
-class Node(object):
+class IntervalSchema(object):
+    __slots__ = ('_interval_step_map',)
 
-    slots = ('entity', 'metric', 'tags')
+    SCHEMA_FILE_NAME = 'c:/Users/Egor/IdeaProjects/atsd-graphite-finder/atsd_finder/interval-schema.conf'
+
+    def __init__(self, metric):
+        """
+        :param metric: `str` metric name
+        """
+
+        config = ConfigParser.RawConfigParser()
+        config.read(IntervalSchema.SCHEMA_FILE_NAME)
+
+        def section_matches(section):
+
+            if config.has_option(section, 'metric-pattern'):
+                return re.match(config.get(section, 'metric-pattern'), metric)
+            return True
+
+        for section in config.sections():
+            if section_matches(section):
+
+                try:
+                    # intervals has form 'x:y, z:t'
+                    intervals = config.get(section, 'retentions')  # str
+                    items = re.split('\s*,\s*', intervals)  # list of str
+                    pairs = (item.split(':') for item in items)  # gen of str tuples
+                    self._interval_step_map = dict((int(b), int(a)) for a, b in pairs)
+                    return
+
+                except Exception as e:
+                    log.exception('could not parse section {:s} in {:s}'
+                                  .format(section, IntervalSchema.SCHEMA_FILE_NAME), e)
+
+        self._interval_step_map = {}
+
+    def get_appropriate_step(self, interval):
+        """find step for current interval using interval schema
+        return step of lowest schema interval that bigger than current
+
+        :param interval: `Number` seconds
+        :return: step `Number` seconds
+        """
+
+        intervals = self._interval_step_map.keys()
+        intervals.sort()
+
+        step = 0
+        for i in intervals:
+            step = self._interval_step_map[i]
+
+            if interval < i:
+                break
+
+        return step
+
+
+class Instance(object):
+    """
+    series unique identifier
+    """
+
+    __slots__ = ('entity', 'metric', 'tags')
 
     def __init__(self, entity, metric, tags):
         # TODO check that node exists, get unique combination of fields
@@ -134,7 +164,7 @@ class AtsdReader(object):
 
     def __init__(self, entity, metric, tags, step, statistic='DETAIL'):
         #: :class:`.Node`
-        self._node = Node(entity, metric, tags)
+        self._node = Instance(entity, metric, tags)
         #: `Number` seconds, if 0 raw data
         self.default_step = step
         #: :class:`.AggregateType`
@@ -147,8 +177,8 @@ class AtsdReader(object):
 
         #: `str` api path
         self._context = urlparse.urljoin(ATSD_CONF['url'], 'api/v1/')
-        #: `dict` interval -> step
-        self._interval_schema = _get_interval_schema(self._node)
+        #: :class:`.IntervalSchema`
+        self._interval_schema = IntervalSchema(metric)
 
         log.info('[AtsdReader] init: entity=' + unicode(entity)
                  + ' metric=' + unicode(metric)
@@ -156,7 +186,7 @@ class AtsdReader(object):
                  + ' url=' + unicode(ATSD_CONF['url']))
 
     def fetch(self, start_time, end_time):
-        """ fetch time series
+        """fetch time series
 
         :param start_time: `Number` seconds
         :param end_time: `Number` seconds
@@ -170,7 +200,7 @@ class AtsdReader(object):
         if self.default_step:
             step = self.default_step
         else:
-            step = self._get_appropriate_step(start_time, end_time)
+            step = self._interval_schema.get_appropriate_step(end_time - start_time)
 
         series = self._query_series(start_time, end_time, step)
 
@@ -194,28 +224,6 @@ class AtsdReader(object):
         log.info('[AtsdReader] fetched {:d} values'.format(len(values)))
 
         return time_info, values
-
-    def _get_appropriate_step(self, start_time, end_time):
-        """find step for current interval using interval schema
-        return step of lowest schema interval that bigger than current
-
-        :param start_time: `Number` seconds
-        :param end_time: `Number` seconds
-        :return: step `Number` seconds
-        """
-        interval = end_time - start_time
-
-        intervals = self._interval_schema.keys()
-        intervals.sort()
-
-        step = 0
-        for i in intervals:
-            step = self._interval_schema[i]
-
-            if interval < i:
-                break
-
-        return step
 
     def _query_series(self, start_time, end_time, step):
         """
