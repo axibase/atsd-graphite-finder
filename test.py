@@ -5,20 +5,25 @@ import atsd_finder
 
 class TestAtsdFinder(unittest.TestCase):
     def test_interval_schema(self):
+        now = time.time()
         reader = atsd_finder.AtsdReader('nurswgvml006',
                                         'cpu_busy',
                                         tags={},
                                         step=0,
                                         statistic='DETAIL')
-        time_info, values = reader.fetch(time.time() - 2 * 24 * 60 * 60, time.time())
-        print time_info
+        time_info_day, _ = reader.fetch(now - 24 * 60 * 60 - 1, now)
+
+        time_info_hour, _ = reader.fetch(now - 60 * 60, now)
+        print time_info_day[2], time_info_hour[2]
+        self.assertGreater(time_info_day[2], time_info_hour[2])
 
     def test_reader_fetch(self):
+        now = time.time()
         reader = atsd_finder.AtsdReader('atsd',
                                         'metric_gets_per_second',
                                         {'host': 'NURSWGVML007'},
                                         5, 'AVG')
-        time_info, values = reader.fetch(time.time() - 24 * 60 * 60, time.time())
+        time_info, values = reader.fetch(now - 24 * 60 * 60, now)
 
         start = time_info[0]
         end = time_info[1]
@@ -26,29 +31,26 @@ class TestAtsdFinder(unittest.TestCase):
         self.assertEqual((end - start) / step, float(len(values)))
 
     def test_reader_group(self):
+        now = time.time()
         reader = atsd_finder.AtsdReader('nurswgvml006',
                                         'cpu_busy',
                                         tags={},
-                                        step=60*60,
+                                        step=60 * 60,
                                         statistic='MIN')
-        time_info_min, values_min = reader.fetch(time.time() - 60 * 60, time.time())
+        _, values_min = reader.fetch(now - 60 * 61, now)
 
         reader = atsd_finder.AtsdReader('nurswgvml006',
                                         'cpu_busy',
                                         tags={},
-                                        step=60*60,
+                                        step=60 * 60,
                                         statistic='MAX')
-        time_info_max, values_max = reader.fetch(time.time() - 2 * 60 * 60, time.time())
+        _, values_max = reader.fetch(now - 60 * 61, now)
 
-        value_min = values_min[-1]
-        if time_info_min[1] == time_info_max[1]:
-            value_max = values_max[-1]
-        else:
-            value_max = values_max[-2]
-
-        self.assertGreater(value_max, value_min)
+        print values_max[0], values_min[0]
+        self.assertGreater(values_max[0], values_min[0])
 
     def test_reader_fetch_raw(self):
+        now = time.time()
         reader = atsd_finder.AtsdReader('safeway',
                                         'retail_price',
                                         {u'category': u'Breakfast-Cereal/Cereal/Cereal--All-Family',
@@ -58,7 +60,7 @@ class TestAtsdFinder(unittest.TestCase):
                                          u'unit': u'oz',
                                          u'zip_code': u'20032'},
                                         0, 'AVG')
-        time_info, values = reader.fetch(time.time() - 24 * 60 * 60, time.time())
+        time_info, values = reader.fetch(now - 24 * 60 * 60, now)
 
         start = time_info[0]
         end = time_info[1]

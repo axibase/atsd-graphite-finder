@@ -161,6 +161,7 @@ class AtsdReader(object):
 
     def _get_appropriate_step(self, start_time, end_time):
         """find step for current interval using interval schema
+        return step of lowest schema interval that bigger than current
 
         :param start_time: `Number` seconds
         :param end_time: `Number` seconds
@@ -173,11 +174,10 @@ class AtsdReader(object):
 
         step = 0
         for i in intervals:
+            step = self._interval_schema[i]
 
             if interval < i:
                 break
-
-            step = self._interval_schema[i]
 
         return step
 
