@@ -81,6 +81,23 @@ def _regularize(series):
     return time_info, values
 
 
+def str_to_sec(val):
+    unit = val[-1]
+    num = val[:-1]
+    if unit is 's':
+        return float(num)
+    elif unit is 'm':
+        return float(num) * 60
+    elif unit is 'h':
+        return float(num) * 60 * 60
+    elif unit is 'd':
+        return float(num) * 24 * 60 * 60
+    elif unit is 'y':
+        return float(num) * 24 * 60 * 60 * 365.2425
+    else:
+        return float(val)
+
+
 class IntervalSchema(object):
     # _map: interval -> step
 
@@ -113,7 +130,8 @@ class IntervalSchema(object):
                     intervals = self._config.get(section, 'retentions')  # str
                     items = re.split('\s*,\s*', intervals)  # list of str
                     pairs = (item.split(':') for item in items)  # str tuples
-                    self._map = dict((int(b), int(a)) for a, b in pairs)
+                    self._map = dict((str_to_sec(b), str_to_sec(a))
+                                     for a, b in pairs)
                     return
 
                 except Exception as e:
@@ -275,6 +293,7 @@ class AtsdReader(object):
         #: :class:`.IntervalSchema`
         self._interval_schema = IntervalSchema(metric)
 
+        print self._interval_schema._map
         log.info('[AtsdReader] init: entity=' + unicode(entity)
                  + ' metric=' + unicode(metric)
                  + ' tags=' + unicode(tags)
