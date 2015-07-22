@@ -16,7 +16,7 @@ except:
 
 class AtsdBranchNode(BranchNode):
 
-    __slots__ = ('label')
+    __slots__ = ('label',)
 
     def __init__(self, path, label):
     
@@ -27,7 +27,7 @@ class AtsdBranchNode(BranchNode):
 
 class AtsdLeafNode(LeafNode):
 
-    __slots__ = ('label')
+    __slots__ = ('label',)
 
     def __init__(self, path, label, reader):
     
@@ -38,12 +38,12 @@ class AtsdLeafNode(LeafNode):
   
 def quote(string):
 
-    return urllib.quote(string, safe = '')
+    return urllib.quote(string, safe='')
     
     
 def full_quote(string):
 
-    return urllib.quote(string, safe = '').replace('.', '%2E')
+    return urllib.quote(string, safe='').replace('.', '%2E')
     
     
 def unquote(string):
@@ -115,6 +115,7 @@ class AtsdFinder(object):
     def __init__(self):
 
         try:
+            # noinspection PyUnresolvedReferences
             pid = unicode(os.getppid()) + ' : ' + unicode(os.getpid())
         except AttributeError:
             pid = unicode(os.getpid())
@@ -160,7 +161,7 @@ class AtsdFinder(object):
                     cell = {'entity folder': folder}
 
                     path = pattern + '.' + full_quote(json.dumps(cell))
-                    log.info('[AtsdFinder] path = ' +  path)
+                    log.info('[AtsdFinder] path = ' + path)
 
                     yield AtsdBranchNode(path, folder)
 
@@ -170,7 +171,7 @@ class AtsdFinder(object):
                     cell = {'metric folder': folder}
 
                     path = pattern + '.' + full_quote(json.dumps(cell))
-                    log.info('[AtsdFinder] path = ' +  path)
+                    log.info('[AtsdFinder] path = ' + path)
 
                     yield AtsdBranchNode(path, folder)
 
@@ -343,7 +344,7 @@ class AtsdFinder(object):
                         suitable = False
                         break
 
-                if (suitable):
+                if suitable:
                     for tag_name in tag_names:
                         if not tag_name in tags and tag_name in tag_combo:
 
@@ -351,7 +352,7 @@ class AtsdFinder(object):
 
                             label = unicode(tag_name + ': ' + tag_combo[tag_name])
                             
-                            cell = {'tag': {tag_name : tag_combo[tag_name]}}
+                            cell = {'tag': {tag_name: tag_combo[tag_name]}}
                             
                             if not label in labels:
                             
@@ -368,7 +369,7 @@ class AtsdFinder(object):
             
                 cell = {'detail': True}
                 
-                path = pattern + '.' +  full_quote(json.dumps(cell))
+                path = pattern + '.' + full_quote(json.dumps(cell))
                 log.info('[AtsdFinder] path = ' + path)
                 
                 reader = AtsdReader(entity, metric, tags, 0)
@@ -377,7 +378,7 @@ class AtsdFinder(object):
                 
                 cell = {'detail': False}
                 
-                path = pattern + '.' +  full_quote(json.dumps(cell))
+                path = pattern + '.' + full_quote(json.dumps(cell))
                 log.info('[AtsdFinder] path = ' + path)
                 
                 yield AtsdBranchNode(path, u'stats')
@@ -400,7 +401,7 @@ class AtsdFinder(object):
                 
                     cell = {'aggregator': aggregator}
                     
-                    path = pattern + '.' +  full_quote(json.dumps(cell))
+                    path = pattern + '.' + full_quote(json.dumps(cell))
                     log.info('[AtsdFinder] path = ' + path)
                     
                     yield AtsdBranchNode(path, aggregator)
@@ -416,7 +417,7 @@ class AtsdFinder(object):
                 
                 cell = {'interval': interval_name}
             
-                path = pattern + '.' +  full_quote(json.dumps(cell))
+                path = pattern + '.' + full_quote(json.dumps(cell))
                 log.info('[AtsdFinder] path = ' + path)
                 
                 interval = self.intervals[self.interval_names.index(interval_name)]
