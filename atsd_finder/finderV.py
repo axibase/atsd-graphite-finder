@@ -18,7 +18,7 @@ from .node import AtsdBranchNode, AtsdLeafNode
   
 def quote(string):
 
-    return urllib.quote(string, safe='')
+    return urllib.quote(string, safe='*')
     
     
 def full_quote(string):
@@ -205,15 +205,20 @@ class AtsdFinderV(object):
                 elif token_type == 'entity':
                 
                     for expr in token_value:
+                    
+                        expr = unicode(expr)
                 
                         if expr != '*':
-                            folder = expr
+                            if 'entity folder' not in info or fnmatch.fnmatch(expr, info['entity folder']):
+                                folder = expr
+                            else:
+                                folder = ''
                         elif 'entity folder' in info:
                             folder = info['entity folder']
                         else:
                             folder = '*'
                         
-                        if not last and not 'metric' in info:
+                        if not last and not 'metric' in info and folder != '':
                         
                             if folder != '*':
                                 url = self.url_base + '/entities?expression=name%20like%20%27' + quote(folder) + '%27'
@@ -282,11 +287,17 @@ class AtsdFinderV(object):
                     for expr in token_value:
                 
                         if expr != '*':
-                            folder = expr
+                            if 'metric folder' not in info or fnmatch.fnmatch(expr, info['metric folder']):
+                                folder = expr
+                            else:
+                                folder = ''
                         elif 'metric folder' in info:
                             folder = info['metric folder']
                         else:
                             folder = '*'
+                            
+                        if folder == '':
+                            continue
                         
                         if not 'entity' in info:
                             url = self.url_base + '/metrics'
