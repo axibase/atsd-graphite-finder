@@ -71,6 +71,8 @@ class AtsdFinderV(object):
     interval_names = ['1 min', '1 hour', '1 day']
 
     def __init__(self):
+    
+        self.name = '[AtsdFinderV]'
 
         try:
             # noinspection PyUnresolvedReferences
@@ -78,7 +80,7 @@ class AtsdFinderV(object):
         except AttributeError:
             pid = unicode(os.getpid())
 
-        log.info('[AtsdFinderV] init: pid = ' + pid)
+        log.info(self.name + ' init: pid = ' + pid)
 
         self.url_base = ATSD_CONF['url'] + '/api/v1'
         self.auth = (ATSD_CONF['username'], ATSD_CONF['password'])
@@ -90,7 +92,7 @@ class AtsdFinderV(object):
 
     def find_nodes(self, query):
 
-        log.info('[AtsdFinderV] finding nodes: query = ' + unicode(query.pattern))
+        log.info(self.name + ' finding nodes: query = ' + unicode(query.pattern))
         
         pattern = query.pattern[:-2] if query.pattern[-1] == '*' else query.pattern
         
@@ -103,7 +105,7 @@ class AtsdFinderV(object):
                 cell = {'build': build_name}
                 
                 path = full_quote(json.dumps(cell))
-                log.info('[AtsdFinderV] path = ' + path)
+                log.info(self.name + ' path = ' + path)
             
                 yield AtsdBranchNode(path, build_name)
             
@@ -134,6 +136,34 @@ class AtsdFinderV(object):
                 token_type = token.keys()[0]
                 token_value = token[token_type]
                 
+                if token_type == 'const':
+                
+                    label = unicode(token_value).encode('punycode')[:-1]
+                        
+                    cell = {'const': unicode(token_value)}
+                        
+                    path = pattern + '.' + full_quote(json.dumps(cell))
+                
+                    if not last:
+                    
+                        log.info(self.name + ' path = ' + path)
+
+                        yield AtsdBranchNode(path, label)
+                    
+                    elif 'metric' in info:
+                    
+                        log.info(self.name + ' path = ' + path)
+                    
+                        entity = info['entity'] if 'entity' in info else '*'
+                        metric = info['metric']
+                        tags = info['tags']
+                        interval = info['interval'] if 'interval' in info else 0
+                        aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
+                        
+                        reader = AtsdReader(entity, metric, tags, interval, aggregator)
+                            
+                        yield AtsdLeafNode(pattern, label, reader)
+                
                 if token_type == 'entity':
                 
                     folder = token_value
@@ -145,10 +175,10 @@ class AtsdFinderV(object):
                         else:
                             url = self.url_base + '/entities'
                             
-                        log.info('[AtsdFinderV] request_url = ' + url)
+                        log.info(self.name + ' request_url = ' + url)
                             
                         response = requests.get(url, auth=self.auth)
-                        log.info('[AtsdFinderV] status = ' + unicode(response.status_code))
+                        log.info(self.name + ' status = ' + unicode(response.status_code))
                         
                         for entity in response.json():
 
@@ -157,17 +187,17 @@ class AtsdFinderV(object):
                             cell = {'entity': unicode(entity['name'])}
                             
                             path = pattern + '.' + full_quote(json.dumps(cell))
-                            log.info('[AtsdFinderV] path = ' + path)
+                            log.info(self.name + ' path = ' + path)
 
                             yield AtsdBranchNode(path, label)
                         
                     elif 'metric' in info:
                     
                         url = self.url_base + '/metrics/' + quote(info['metric'])+ '/entity-and-tags'
-                        log.info('[AtsdFinderV] request_url = ' + url)
+                        log.info(self.name + ' request_url = ' + url)
 
                         response = requests.get(url, auth=self.auth)
-                        log.info('[AtsdFinderV] status = ' + unicode(response.status_code))
+                        log.info(self.name + ' status = ' + unicode(response.status_code))
 
                         entities = set()
 
@@ -185,7 +215,7 @@ class AtsdFinderV(object):
                             cell = {'entity': unicode(entity)}
                             
                             path = pattern + '.' + full_quote(json.dumps(cell))
-                            log.info('[AtsdFinderV] path = ' + path)
+                            log.info(self.name + ' path = ' + path)
                             
                             if not last:
                             
@@ -214,10 +244,10 @@ class AtsdFinderV(object):
                     if folder != '':
                         url = url + '?expression=name%20like%20%27' + quote(folder) + '*%27'
                         
-                    log.info('[AtsdFinderV] request_url = ' + url)
+                    log.info(self.name + ' request_url = ' + url)
                         
                     response = requests.get(url, auth=self.auth)
-                    log.info('[AtsdFinderV] status = ' + unicode(response.status_code))
+                    log.info(self.name + ' status = ' + unicode(response.status_code))
                     
                     for metric in response.json():
 
@@ -226,7 +256,7 @@ class AtsdFinderV(object):
                         cell = {'metric': unicode(metric['name'])}
                         
                         path = pattern + '.' + full_quote(json.dumps(cell))
-                        log.info('[AtsdFinderV] path = ' + path)
+                        log.info(self.name + ' path = ' + path)
                         
                         if not last:
 
@@ -252,7 +282,7 @@ class AtsdFinderV(object):
                         cell = {'aggregator': unicode(token_value[aggregator])}
                         
                         path = pattern + '.' + full_quote(json.dumps(cell))
-                        log.info('[AtsdFinderV] path = ' + path)
+                        log.info(self.name + ' path = ' + path)
                         
                         if not last:
 
@@ -278,7 +308,7 @@ class AtsdFinderV(object):
                         cell = {'interval': token_value[interval]}
                         
                         path = pattern + '.' + full_quote(json.dumps(cell))
-                        log.info('[AtsdFinderV] path = ' + path)
+                        log.info(self.name + ' path = ' + path)
 
                         if not last:
 
