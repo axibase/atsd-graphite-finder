@@ -168,10 +168,45 @@ class AtsdFinderV(object):
                         reader = AtsdReader(entity, metric, tags, interval, aggregator)
                             
                         yield AtsdLeafNode(pattern, label, reader)
+                        
+                elif token_type in ['entity folder', 'metric folder']:
+                    
+                    for folder in token_value:
+                    
+                        label = unicode(folder).encode('punycode')[:-1]
+                        
+                        cell = {token_type: unicode(folder)}
+                        
+                        path = pattern + '.' + full_quote(json.dumps(cell))
+
+                        if not last:
+                        
+                            # self.log('path = ' + path)
+                            
+                            yield AtsdBranchNode(path, label)
+                            
+                        elif 'metric' in info:
+                            
+                            # self.log('path = ' + path)
+                            
+                            entity = info['entity'] if 'entity' in info else '*'
+                            metric = info['metric']
+                            tags = info['tags']
+                            interval = info['interval'] if 'interval' in info else 0
+                            aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
+                            
+                            reader = AtsdReader(entity, metric, tags, interval, aggregator)
                 
-                if token_type == 'entity':
+                            yield AtsdLeafNode(path, label, reader)
                 
-                    folder = token_value
+                elif token_type == 'entity':
+                
+                    if token_value != '':
+                        folder = token_value
+                    elif 'entity folder' in info:
+                        folder = info['entity folder']
+                    else:
+                        folder = ''
                     
                     if not last and not 'metric' in info:
                     
@@ -239,7 +274,12 @@ class AtsdFinderV(object):
                             
                 elif token_type == 'metric':
                 
-                    folder = token_value
+                    if token_value != '':
+                        folder = token_value
+                    elif 'metric folder' in info:
+                        folder = info['metric folder']
+                    else:
+                        folder = ''
                     
                     if not 'entity' in info:
                         url = self.url_base + '/metrics'
