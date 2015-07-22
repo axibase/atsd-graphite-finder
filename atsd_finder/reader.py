@@ -160,6 +160,12 @@ class AtsdReader(object):
         return time_info, values
 
     def _get_appropriate_step(self, start_time, end_time):
+        """find step for current interval using interval schema
+
+        :param start_time: `Number` seconds
+        :param end_time: `Number` seconds
+        :return: step `Number` seconds
+        """
         interval = end_time - start_time
 
         intervals = self._interval_schema.keys()
@@ -212,6 +218,9 @@ class AtsdReader(object):
         return resp['series'][0]['data']
 
     def get_intervals(self):
+        """
+        :return: :class:`.IntervalSet`
+        """
 
         log.info('[AtsdReader] getting_intervals')
 
@@ -230,9 +239,10 @@ class AtsdReader(object):
     def _request(self, method, path, data=None):
         """
         :param method: `str`
-        :param path: `str` after 'api/v1'
-        :param data: `dict` or `list`
+        :param path: `str` url after 'api/v1'
+        :param data: `dict` or `list` json body of request
         :return: `dict` or `list` response.json()
+        :raises RuntimeError: server response not 200
         """
 
         request = requests.Request(
