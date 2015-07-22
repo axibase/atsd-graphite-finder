@@ -173,31 +173,34 @@ class AtsdFinderV(object):
                     
                     for folder in token_value:
                     
-                        label = unicode(folder).encode('punycode')[:-1]
-                        
-                        cell = {token_type: unicode(folder)}
-                        
-                        path = pattern + '.' + full_quote(json.dumps(cell))
+                        if token_type not in info \
+                           or token_type in info and re.match(info[token_type] + '.*', unicode(folder)):
+                    
+                            label = unicode(folder).encode('punycode')[:-1]
+                            
+                            cell = {token_type: unicode(folder)}
+                            
+                            path = pattern + '.' + full_quote(json.dumps(cell))
 
-                        if not last:
-                        
-                            # self.log('path = ' + path)
+                            if not last:
                             
-                            yield AtsdBranchNode(path, label)
-                            
-                        elif 'metric' in info:
-                            
-                            # self.log('path = ' + path)
-                            
-                            entity = info['entity'] if 'entity' in info else '*'
-                            metric = info['metric']
-                            tags = info['tags']
-                            interval = info['interval'] if 'interval' in info else 0
-                            aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
-                            
-                            reader = AtsdReader(entity, metric, tags, interval, aggregator)
-                
-                            yield AtsdLeafNode(path, label, reader)
+                                # self.log('path = ' + path)
+                                
+                                yield AtsdBranchNode(path, label)
+                                
+                            elif 'metric' in info:
+                                
+                                # self.log('path = ' + path)
+                                
+                                entity = info['entity'] if 'entity' in info else '*'
+                                metric = info['metric']
+                                tags = info['tags']
+                                interval = info['interval'] if 'interval' in info else 0
+                                aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
+                                
+                                reader = AtsdReader(entity, metric, tags, interval, aggregator)
+                    
+                                yield AtsdLeafNode(path, label, reader)
                 
                 elif token_type == 'entity':
                 
