@@ -90,27 +90,6 @@ class AtsdFinder(object):
     roots = {'entities', 'metrics'}
     intervals = [60, 3600, 86400]
     interval_names = ['1 min', '1 hour', '1 day']
-    aggregators = {
-        'Detail'                : 'detail',
-        'Count'                 : 'count',
-        'Minimum'               : 'min',
-        'Maximum'               : 'max',
-        'Average'               : 'avg',
-        'Median'                : 'median',
-        'Sum'                   : 'sum',
-        'Percentile 99.9%'      : 'percentile_999',
-        'Percentile 99.5%'      : 'percentile_995',
-        'Percentile 99%'        : 'percentile_99',
-        'Percentile 95%'        : 'percentile_95',
-        'Percentile 90%'        : 'percentile_90',
-        'Percentile 75%'        : 'percentile_75',
-        'First value'           : 'first',
-        'Last value'            : 'last',
-        'Delta'                 : 'delta',
-        'Weighted average'      : 'wavg',
-        'Weighted time average' : 'wtavg',
-        'Standard deviation'    : 'standard_deviation'
-    }
 
     def __init__(self):
 
@@ -134,6 +113,30 @@ class AtsdFinder(object):
             self.metric_folders = ATSD_CONF['metric_folders']
         except KeyError:
             self.metric_folders = 'abcdefghijklmnopqrstuvwxyz_'
+            
+        try:
+            self.aggregators = ATSD_CONF['aggregators']
+        except KeyError:
+            self.aggregators = {
+                'Count'                 : 'count',
+                'Minimum'               : 'min',
+                'Maximum'               : 'max',
+                'Average'               : 'avg',
+                'Median'                : 'median',
+                'Sum'                   : 'sum',
+                'Percentile 99.9%'      : 'percentile_999',
+                'Percentile 99.5%'      : 'percentile_995',
+                'Percentile 99%'        : 'percentile_99',
+                'Percentile 95%'        : 'percentile_95',
+                'Percentile 90%'        : 'percentile_90',
+                'Percentile 75%'        : 'percentile_75',
+                'First value'           : 'first',
+                'Last value'            : 'last',
+                'Delta'                 : 'delta',
+                'Weighted average'      : 'wavg',
+                'Weighted time average' : 'wtavg',
+                'Standard deviation'    : 'standard_deviation'
+            }
 
     def find_nodes(self, query):
 
