@@ -238,12 +238,12 @@ class AtsdFinderV(object):
                             folders.append(folder)
                         
                     if '*' in folders:
-                        folders = []
+                        folders = ['*']
                         
                     if not last and not 'metric' in info:
                     
                         expressions = ['name%20like%20%27' + quote(folder) + '%27' for folder in folders]
-                        tail = '?expression=' + '%20or%20'.join(expressions) if expressions else ''
+                        tail = '?expression=' + '%20or%20'.join(expressions)
                     
                         url = self.url_base + '/entities' + tail
                         self.log('request_url = ' + url)
@@ -336,10 +336,10 @@ class AtsdFinderV(object):
                             folders.append(folder)
                     
                     if '*' in folders:
-                        folders = []
+                        folders = ['*']
                         
                     expressions = ['name%20like%20%27' + quote(folder) + '%27' for folder in folders]
-                    tail = '?expression=' + '%20or%20'.join(expressions) if expressions else ''
+                    tail = '?expression=' + '%20or%20'.join(expressions)
                         
                     if not 'entity' in info:
                         url = self.url_base + '/metrics'
