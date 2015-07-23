@@ -223,7 +223,7 @@ class Instance(object):
 
         return response.json()
 
-    def query_series(self, start_time, end_time, step, statistic):
+    def query_series(self, start_time, end_time, step, aggregator):
         """
         :param start_time: `Number` seconds
         :param end_time: `Number` seconds
@@ -250,7 +250,7 @@ class Instance(object):
         if step:
             # request regularized data
             data['queries'][0]['aggregate'] = {
-                'type': statistic,
+                'type': 'AVG' if aggregator is 'DETAIL' else aggregator,
                 'interpolate': 'STEP',
                 'interval': {'count': step, 'unit': 'SECOND'}
             }
@@ -280,18 +280,18 @@ class Instance(object):
 
 class AtsdReader(object):
     __slots__ = ('_instance',
-                 'default_step',
-                 'statistic',
+                 'step',
+                 'aggregator',
                  '_interval_schema')
 
-    def __init__(self, entity, metric, tags, step, statistic='AVG'):
+    def __init__(self, entity, metric, tags, step, aggregator):
         #: :class:`.Node`
         self._instance = Instance(entity, metric, tags)
         #: `Number` seconds, if 0 raw data
-        self.default_step = step
+        self.step = 0 if aggregator is 'DETAIL' else step
 
         #: :class:`.AggregateType`
-        self.statistic = statistic if step else 'AVG'
+        self.aggregator = aggregator if step else 'DETAIL'
 
         #: :class:`.IntervalSchema`
         self._interval_schema = IntervalSchema(metric)
@@ -313,15 +313,15 @@ class AtsdReader(object):
             .format(start_time, end_time)
         )
 
-        if self.default_step:
-            step = self.default_step
+        if self.step:
+            step = self.step
         else:
             step = self._interval_schema.get_step(end_time - start_time)
 
         series = self._instance.query_series(start_time,
                                              end_time,
                                              step,
-                                             self.statistic)
+                                             self.aggregator)
 
         log.info('[AtsdReader] get series of {:d} samples'.format(len(series)))
 

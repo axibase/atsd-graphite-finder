@@ -10,7 +10,7 @@ class TestAtsdFinder(unittest.TestCase):
                                         'cpu_busy',
                                         tags={},
                                         step=0,
-                                        statistic='DETAIL')
+                                        aggregator='DETAIL')
         time_info_day, vals_day = reader.fetch(now - 2 * 60 * 60, now)
         time_info_hour, _ = reader.fetch(now - 60 * 60, now)
 
@@ -20,7 +20,7 @@ class TestAtsdFinder(unittest.TestCase):
                                         'cpu_busy',
                                         tags={},
                                         step=60,
-                                        statistic='AVG')
+                                        aggregator='AVG')
         time_info_group, vals_group = reader_group.fetch(now - 2 * 60 * 60, now)
 
         self.assertListEqual(vals_group, vals_day)
@@ -44,14 +44,14 @@ class TestAtsdFinder(unittest.TestCase):
                                         'cpu_busy',
                                         tags={},
                                         step=60 * 60,
-                                        statistic='MIN')
+                                        aggregator='MIN')
         _, values_min = reader.fetch(now - 60 * 61, now)
 
         reader = atsd_finder.AtsdReader('nurswgvml006',
                                         'cpu_busy',
                                         tags={},
                                         step=60 * 60,
-                                        statistic='MAX')
+                                        aggregator='MAX')
         _, values_max = reader.fetch(now - 60 * 61, now)
 
         print values_max[0], values_min[0]
