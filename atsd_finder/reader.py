@@ -86,6 +86,10 @@ def _regularize(series):
 
 
 def _str_to_sec(val):
+    """
+    :param val: `str` time interval
+    :return: interval `float` seconds
+    """
     unit = val[-1]
     num = val[:-1]
     if unit == 's':
@@ -102,16 +106,54 @@ def _str_to_sec(val):
         return float(val)
 
 
+def _str_to_interval(val):
+    """
+    :param val: `str` time interval
+    :return: interval `tuple` (count, unit)
+    """
+    unit = val[-1]
+    num = val[:-1]
+    if unit == 's':
+        return float(num), 'SECOND'
+    elif unit == 'm':
+        return float(num) * 60, 'SECOND'
+    elif unit == 'h':
+        return float(num) * 60 * 60, 'SECOND'
+    elif unit == 'd':
+        return float(num) * 24 * 60 * 60, 'SECOND'
+    elif unit == 'y':
+        return float(num), 'YEAR'
+    else:
+        return float(val), 'SECOND'
+
+
 class Aggregator(object):
     __slots__ = ('type', 'count', 'unit', 'interpolate')
 
     def __init__(self, count, type='AVG', unit='SECOND', interpolate='STEP'):
-        #: `str`
-        self.type = type
+        if not count:
+            raise ValueError('Aggregator.count could not be ' + unicode(count))
+
+        if unit == 'MILLISECOND':
+            count /= 1000.0
+            unit = 'SECOND'
+        elif unit == 'MINUTE':
+            count *= 60
+            unit = 'SECOND'
+        elif unit == 'HOUR':
+            count *= 60 * 60
+            unit = 'SECOND'
+        elif unit == 'DAY':
+            count *= 60 * 60 * 24
+            unit = 'SECOND'
+
         #: `Number`
         self.count = count
         #: `str`
         self.unit = unit
+
+        #: `str`
+        self.type = type
         #: `str`
         self.interpolate = interpolate
 
@@ -154,7 +196,7 @@ class IntervalSchema(object):
                     intervals = self._config.get(section, 'retentions')  # str
                     items = re.split('\s*,\s*', intervals)  # list of str
                     pairs = (item.split(':') for item in items)  # str tuples
-                    self._map = dict((_str_to_sec(b), _str_to_sec(a))
+                    self._map = dict((_str_to_sec(b), _str_to_interval(a))
                                      for a, b in pairs)
                     return
 
@@ -175,16 +217,16 @@ class IntervalSchema(object):
         intervals = self._map.keys()
         intervals.sort()
 
-        step = 0
+        count = 0
+        unit = None
         for i in intervals:
-            step = self._map[i]
-
-            if interval <= i:
+            if i >= interval:
+                count, unit = self._map[i]
                 break
 
-        if step:
-            return Aggregator(step, 'AVG', 'SECOND')
-        else:
+        if count:
+            return Aggregator(count, 'AVG', unit)
+        else:  # unit = None
             return None
 
 
