@@ -18,7 +18,7 @@ class TestAtsdFinder(unittest.TestCase):
         reader_group = atsd_finder.AtsdReader('nurswgvml006',
                                               'cpu_busy',
                                               {},
-                                              Aggregator('AVG', 60, 'SECOND'))
+                                              Aggregator(60, 'AVG', 'SECOND'))
         time_info_group, vals_group = reader_group.fetch(now - 2 * 60 * 60, now)
 
         self.assertListEqual(vals_group, vals_day)
@@ -28,7 +28,7 @@ class TestAtsdFinder(unittest.TestCase):
         reader = atsd_finder.AtsdReader('atsd',
                                         'metric_gets_per_second',
                                         {'host': 'NURSWGVML007'},
-                                        Aggregator('AVG', 5, 'SECOND'))
+                                        Aggregator(5, 'AVG', 'SECOND'))
         time_info, values = reader.fetch(now - 24 * 60 * 60, now)
 
         start = time_info[0]
@@ -41,13 +41,13 @@ class TestAtsdFinder(unittest.TestCase):
         reader = atsd_finder.AtsdReader('nurswgvml006',
                                         'cpu_busy',
                                         {},
-                                        Aggregator('MIN', 60*60, 'SECOND'))
+                                        Aggregator(60 * 60, 'MIN', 'SECOND'))
         _, values_min = reader.fetch(now - 60 * 61, now)
 
         reader = atsd_finder.AtsdReader('nurswgvml006',
                                         'cpu_busy',
                                         {},
-                                        Aggregator('MAX', 60*60, 'SECOND'))
+                                        Aggregator(60 * 60, 'MAX', 'SECOND'))
         _, values_max = reader.fetch(now - 60 * 61, now)
 
         print values_max[0], values_min[0]
@@ -74,7 +74,7 @@ class TestAtsdFinder(unittest.TestCase):
         reader = atsd_finder.AtsdReader('atsd',
                                         'metric_gets_per_second',
                                         {'host': 'NURSWGVML007'},
-                                        Aggregator('AVG', 1, 'SECOND'))
+                                        Aggregator(1, 'AVG', 'SECOND'))
         reader.get_intervals()
 
     def test_finder(self):

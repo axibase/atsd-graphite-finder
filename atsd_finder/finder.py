@@ -446,7 +446,8 @@ class AtsdFinder(object):
                 self.log('aggregator = ' + aggregator + ', interval = ' + unicode(interval))
 
                 if interval != 0:
-                    reader = AtsdReader(entity, metric, tags, Aggregator(aggregator, interval))
+                    reader = AtsdReader(entity, metric, tags,
+                                        Aggregator(interval, aggregator))
                 else:
                     reader = AtsdReader(entity, metric, tags)
                 
@@ -463,7 +464,8 @@ class AtsdFinder(object):
             self.log('aggregator = ' + aggregator + ', interval = ' + unicode(interval))
 
             if interval != 0:
-                reader = AtsdReader(entity, metric, tags, Aggregator(aggregator, interval))
+                reader = AtsdReader(entity, metric, tags,
+                                    Aggregator(interval, aggregator))
             else:
                 reader = AtsdReader(entity, metric, tags)
             

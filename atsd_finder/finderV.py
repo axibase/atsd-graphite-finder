@@ -194,7 +194,9 @@ class AtsdFinderV(object):
                                 aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
 
                                 if interval != 0:
-                                    reader = AtsdReader(entity, metric, tags, Aggregator(aggregator, interval))
+                                    reader = AtsdReader(entity, metric, tags,
+                                                        Aggregator(interval,
+                                                                   aggregator))
                                 else:
                                     reader = AtsdReader(entity, metric, tags)
                                     
@@ -235,7 +237,9 @@ class AtsdFinderV(object):
                                     aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
 
                                     if interval != 0:
-                                        reader = AtsdReader(entity, metric, tags, Aggregator(aggregator, interval))
+                                        reader = AtsdReader(entity, metric, tags,
+                                                            Aggregator(interval,
+                                                                       aggregator))
                                     else:
                                         reader = AtsdReader(entity, metric, tags)
                         
@@ -336,7 +340,9 @@ class AtsdFinderV(object):
                                     aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
 
                                     if interval != 0:
-                                        reader = AtsdReader(entity, metric, tags, Aggregator(aggregator, interval))
+                                        reader = AtsdReader(entity, metric, tags,
+                                                            Aggregator(interval,
+                                                                       aggregator))
                                     else:
                                         reader = AtsdReader(entity, metric, tags)
                         
@@ -403,7 +409,9 @@ class AtsdFinderV(object):
                                 aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
 
                                 if interval != 0:
-                                    reader = AtsdReader(entity, metric, tags, Aggregator(aggregator, interval))
+                                    reader = AtsdReader(entity, metric, tags,
+                                                        Aggregator(interval,
+                                                                   aggregator))
                                 else:
                                     reader = AtsdReader(entity, metric, tags)
                                 
@@ -480,7 +488,10 @@ class AtsdFinderV(object):
                                         aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
 
                                         if interval != 0:
-                                            reader = AtsdReader(entity, metric, tags, Aggregator(aggregator, interval))
+                                            reader = AtsdReader(entity, metric, tags,
+                                                                Aggregator(
+                                                                    interval,
+                                                                    aggregator))
                                         else:
                                             reader = AtsdReader(entity, metric, tags)
                                         
@@ -516,7 +527,9 @@ class AtsdFinderV(object):
                                 interval = info['interval'] if 'interval' in info else 0
 
                                 if interval != 0:
-                                    reader = AtsdReader(entity, metric, tags, Aggregator(aggregator.upper(), interval))
+                                    reader = AtsdReader(entity, metric, tags,
+                                                        Aggregator(interval,
+                                                                   aggregator.upper()))
                                 else:
                                     reader = AtsdReader(entity, metric, tags)
                                 
@@ -550,7 +563,9 @@ class AtsdFinderV(object):
                                 aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
 
                                 if interval != 0:
-                                    reader = AtsdReader(entity, metric, tags, Aggregator(aggregator, interval))
+                                    reader = AtsdReader(entity, metric, tags,
+                                                        Aggregator(interval,
+                                                                   aggregator))
                                 else:
                                     reader = AtsdReader(entity, metric, tags)
                                 
@@ -567,7 +582,8 @@ class AtsdFinderV(object):
                     aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
 
                     if interval != 0:
-                        reader = AtsdReader(entity, metric, tags, Aggregator(aggregator, interval))
+                        reader = AtsdReader(entity, metric, tags,
+                                            Aggregator(interval, aggregator))
                     else:
                         reader = AtsdReader(entity, metric, tags)
                             

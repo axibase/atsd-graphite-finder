@@ -105,7 +105,7 @@ def _str_to_sec(val):
 class Aggregator(object):
     __slots__ = ('type', 'count', 'unit', 'interpolate')
 
-    def __init__(self, type, count, unit='SECOND', interpolate='STEP'):
+    def __init__(self, count, type='AVG', unit='SECOND', interpolate='STEP'):
         #: `str`
         self.type = type
         #: `Number`
@@ -183,7 +183,7 @@ class IntervalSchema(object):
                 break
 
         if step:
-            return Aggregator('AVG', step, 'SECOND')
+            return Aggregator(step, 'AVG', 'SECOND')
         else:
             return None
 
