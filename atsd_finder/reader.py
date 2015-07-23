@@ -5,13 +5,17 @@ import urllib
 import ConfigParser
 import fnmatch
 import re
+import os
 
 from graphite.intervals import Interval, IntervalSet
-from graphite.local_settings import ATSD_CONF
+
 try:
     from graphite.logger import log
-except:
+    from django.conf import settings
+except:  # debug env
+    from graphite import settings
     import default_logger as log
+    log.info('running in debugging environment')
 
 
 def _round_step(step):
@@ -103,8 +107,7 @@ class IntervalSchema(object):
 
     __slots__ = ('_map',)
 
-    # CONF_NAME = 'c:/Users/Egor/IdeaProjects/atsd-graphite-finder/atsd_finder/interval-schema.conf'
-    CONF_NAME = '/opt/graphite/conf/interval-schema.conf'
+    CONF_NAME = os.path.join(settings.CONF_DIR, 'interval-schema.conf')
 
     _config = ConfigParser.RawConfigParser()
     _config.read(CONF_NAME)
@@ -178,10 +181,10 @@ class Instance(object):
         self.tags = tags
         #: :class:`.Session`
         self._session = requests.Session()
-        self._session.auth = (ATSD_CONF['username'],
-                              ATSD_CONF['password'])
+        self._session.auth = (settings.ATSD_CONF['username'],
+                              settings.ATSD_CONF['password'])
         #: `str` api path
-        self._context = urlparse.urljoin(ATSD_CONF['url'], 'api/v1/')
+        self._context = urlparse.urljoin(settings.ATSD_CONF['url'], 'api/v1/')
 
     def _request(self, method, path, data=None):
         """
@@ -293,11 +296,10 @@ class AtsdReader(object):
         #: :class:`.IntervalSchema`
         self._interval_schema = IntervalSchema(metric)
 
-        print self._interval_schema._map
         log.info('[AtsdReader] init: entity=' + unicode(entity)
                  + ' metric=' + unicode(metric)
                  + ' tags=' + unicode(tags)
-                 + ' url=' + unicode(ATSD_CONF['url']))
+                 + ' url=' + unicode(settings.ATSD_CONF['url']))
 
     def fetch(self, start_time, end_time):
         """fetch time series
