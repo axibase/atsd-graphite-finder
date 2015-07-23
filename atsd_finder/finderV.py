@@ -214,11 +214,13 @@ class AtsdFinderV(object):
                                 yield AtsdLeafNode(path, label, reader)
                 
                 elif token_type == 'entity':
-                
+
+                    folders = []
+
                     for expr in token_value:
                     
                         expr = unicode(expr)
-                
+
                         if expr != '*':
                             if 'entity folder' not in info or fnmatch.fnmatch(expr, info['entity folder']):
                                 folder = expr
@@ -228,77 +230,93 @@ class AtsdFinderV(object):
                             folder = info['entity folder']
                         else:
                             folder = '*'
-                        
-                        if not last and not 'metric' in info and folder != '':
-                        
-                            if folder != '*':
-                                url = self.url_base + '/entities?expression=name%20like%20%27' + quote(folder) + '%27'
-                            else:
-                                url = self.url_base + '/entities'
-                                
-                            self.log('request_url = ' + url)
-                                
-                            response = requests.get(url, auth=self.auth)
-                            self.log('status = ' + unicode(response.status_code))
                             
-                            for entity in response.json():
+                        if not folder in ['']:
+                            folders.append(folder)
+                        
+                    if '*' in folders:
+                        folders = []
+                        
+                    if not last and not 'metric' in info:
+                    
+                        expressions = ['name%20like%20%27' + quote(folder) + '%27' for folder in folders]
+                        tail = '?expression=' + '%20or%20'.join(expressions) if expressions else ''
+                    
+                        url = self.url_base + '/entities' + tail
+                        self.log('request_url = ' + url)
+                            
+                        response = requests.get(url, auth=self.auth)
+                        self.log('status = ' + unicode(response.status_code))
+                        
+                        for entity in response.json():
 
-                                label = unicode(entity['name']).encode('punycode')[:-1]
-                                
-                                cell = {'type': 'entity',
-                                        'value': unicode(entity['name'])}
-                                
-                                path = pattern + '.' + full_quote(json.dumps(cell))
-                                # self.log('path = ' + path)
+                            label = unicode(entity['name']).encode('punycode')[:-1]
+                            
+                            cell = {'type': 'entity',
+                                    'value': unicode(entity['name'])}
+                            
+                            path = pattern + '.' + full_quote(json.dumps(cell))
+                            # self.log('path = ' + path)
 
+                            yield AtsdBranchNode(path, label)
+                            
+                    elif 'metric' in info:
+                    
+                        url = self.url_base + '/metrics/' + quote(info['metric'])+ '/entity-and-tags'
+                        self.log('request_url = ' + url)
+
+                        response = requests.get(url, auth=self.auth)
+                        self.log('status = ' + unicode(response.status_code))
+
+                        entities = set()
+
+                        for combo in response.json():
+
+                            entities.add(combo['entity'])
+
+                        for entity in entities:
+                        
+                            matches = False
+                        
+                            for folder in folders:
+                                if fnmatch.fnmatch(unicode(entity), folder):
+                                    matches = True
+                                    break
+                                    
+                            if not matches:
+                                continue
+
+                            label = unicode(entity).encode('punycode')[:-1]
+                            
+                            cell = {'type': 'entity',
+                                    'value': unicode(entity)}
+                            
+                            path = pattern + '.' + full_quote(json.dumps(cell))
+                            # self.log('path = ' + path)
+                            
+                            if not last:
+                            
                                 yield AtsdBranchNode(path, label)
+                                
+                            else:
                             
-                        elif 'metric' in info:
-                        
-                            url = self.url_base + '/metrics/' + quote(info['metric'])+ '/entity-and-tags'
-                            self.log('request_url = ' + url)
-
-                            response = requests.get(url, auth=self.auth)
-                            self.log('status = ' + unicode(response.status_code))
-
-                            entities = set()
-
-                            for combo in response.json():
-
-                                entities.add(combo['entity'])
-
-                            for entity in entities:
-                            
-                                if not fnmatch.fnmatch(unicode(entity), folder):
-                                    continue
-
-                                label = unicode(entity).encode('punycode')[:-1]
+                                metric = info['metric']
+                                tags = info['tags']
+                                interval = info['interval'] if 'interval' in info else 0
+                                aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
                                 
-                                cell = {'type': 'entity',
-                                        'value': unicode(entity)}
-                                
-                                path = pattern + '.' + full_quote(json.dumps(cell))
-                                # self.log('path = ' + path)
-                                
-                                if not last:
-                                
-                                    yield AtsdBranchNode(path, label)
-                                    
-                                else:
-                                
-                                    metric = info['metric']
-                                    tags = info['tags']
-                                    interval = info['interval'] if 'interval' in info else 0
-                                    aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
-                                    
-                                    reader = AtsdReader(entity, metric, tags, interval, aggregator)
-                        
-                                    yield AtsdLeafNode(path, label, reader)
+                                reader = AtsdReader(entity, metric, tags, interval, aggregator)
+                    
+                                yield AtsdLeafNode(path, label, reader)
                             
                 elif token_type == 'metric':
-                
+
+                    folders = []
+
                     for expr in token_value:
-                
+                    
+                        expr = unicode(expr)
+
                         if expr != '*':
                             if 'metric folder' not in info or fnmatch.fnmatch(expr, info['metric folder']):
                                 folder = expr
@@ -309,46 +327,50 @@ class AtsdFinderV(object):
                         else:
                             folder = '*'
                             
-                        if folder == '':
-                            continue
+                        if folder != '':
+                            folders.append(folder)
+                    
+                    if '*' in folders:
+                        folders = []
                         
-                        if not 'entity' in info:
-                            url = self.url_base + '/metrics'
+                    expressions = ['name%20like%20%27' + quote(folder) + '%27' for folder in folders]
+                    tail = '?expression=' + '%20or%20'.join(expressions) if expressions else ''
+                        
+                    if not 'entity' in info:
+                        url = self.url_base + '/metrics'
+                    else:
+                        url = self.url_base + '/entities/' + quote(info['entity'])+ '/metrics'
+                        
+                    url = url + tail
+                    self.log('request_url = ' + url)
+                        
+                    response = requests.get(url, auth=self.auth)
+                    self.log('status = ' + unicode(response.status_code))
+                    
+                    for metric in response.json():
+
+                        label = unicode(metric['name']).encode('punycode')[:-1]
+                        
+                        cell = {'type': 'metric',
+                                'value': unicode(metric['name'])}
+                        
+                        path = pattern + '.' + full_quote(json.dumps(cell))
+                        # self.log('path = ' + path)
+                        
+                        if not last:
+
+                            yield AtsdBranchNode(path, label)
+                            
                         else:
-                            url = self.url_base + '/entities/' + quote(info['entity'])+ '/metrics'
-                            
-                        if folder != '*':
-                            url = url + '?expression=name%20like%20%27' + quote(folder) + '%27'
-                            
-                        self.log('request_url = ' + url)
-                            
-                        response = requests.get(url, auth=self.auth)
-                        self.log('status = ' + unicode(response.status_code))
                         
-                        for metric in response.json():
-
-                            label = unicode(metric['name']).encode('punycode')[:-1]
-                            
-                            cell = {'type': 'metric',
-                                    'value': unicode(metric['name'])}
-                            
-                            path = pattern + '.' + full_quote(json.dumps(cell))
-                            # self.log('path = ' + path)
-                            
-                            if not last:
-
-                                yield AtsdBranchNode(path, label)
+                            entity = info['entity'] if 'entity' in info else '*'
+                            tags = info['tags']
+                            interval = info['interval'] if 'interval' in info else 0
+                            aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
                                 
-                            else:
+                            reader = AtsdReader(entity, metric, tags, interval, aggregator)
                             
-                                entity = info['entity'] if 'entity' in info else '*'
-                                tags = info['tags']
-                                interval = info['interval'] if 'interval' in info else 0
-                                aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
-                                    
-                                reader = AtsdReader(entity, metric, tags, interval, aggregator)
-                                
-                                yield AtsdLeafNode(path, label, reader)
+                            yield AtsdLeafNode(path, label, reader)
                             
                 elif token_type == 'tag':
                 
