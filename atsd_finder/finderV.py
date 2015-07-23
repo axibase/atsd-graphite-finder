@@ -55,10 +55,11 @@ def get_info(pattern):
             
         elif token_type == 'tag':
         
-            tag_name = token_value.keys()[0]
-            tag_value = token_value[tag_name]
-        
-            info['tags'][tag_name] = tag_value
+            for tag_name in token_value:
+            
+                tag_value = token_value[tag_name]
+                
+                info['tags'][tag_name] = tag_value
             
     log.info('[AtsdInfo] ' + json.dumps(info))
     
@@ -346,7 +347,7 @@ class AtsdFinderV(object):
                         response = requests.get(url, auth=self.auth)
                         self.log('status = ' + unicode(response.status_code))
 
-                        tag_values = [];
+                        tag_combos = [];
 
                         for combo in response.json():
                         
@@ -355,29 +356,37 @@ class AtsdFinderV(object):
                             if 'entity' in info and info['entity'] != combo['entity']:
                                 continue
                                 
-                            if not token_value in tags:
+                            contains = True
+                              
+                            for tag_name in token_value:
+                                if not tag_name in tags:
+                                    contains = False
+                                    break
+                                    
+                            if not contains:
                                 continue
                             
                             matches = True
                             
                             for tag_name in tags:
-                                
                                 if tag_name in info['tags'] and info['tags'][tag_name] != tags[tag_name]:
                                     matches = False
                                     break
                                     
-                            tag_value = tags[token_value]
-                            
-                            if matches and not tag_value in tag_values:
-                                self.log(tag_value)
+                            tag_combo = {}
+                            tag_values = []
                                     
-                            if matches and not tag_value in tag_values:
+                            for tag_name in token_value:
+                                tag_combo[tag_name] = tags[tag_name]
+                                tag_values.append(tags[tag_name])
+                                    
+                            if matches and not tag_combo in tag_combos:
                                 
-                                tag_values.append(tag_value)
+                                tag_combos.append(tag_combo)
                             
-                                label = unicode(tag_value).encode('punycode')[:-1]
+                                label = unicode(', '.join(tag_values)).encode('punycode')[:-1]
                             
-                                cell = {'tag': {token_value: tag_value}}
+                                cell = {'tag': tag_combo}
                             
                                 path = pattern + '.' + full_quote(json.dumps(cell))
                                 # self.log('path = ' + path)
@@ -389,7 +398,7 @@ class AtsdFinderV(object):
                                 else:
                                 
                                     tags = copy.deepcopy(info['tags'])
-                                    tags.update({token_value: tag_value})
+                                    tags.update(tag_combo)
                                 
                                     entity = info['entity'] if 'entity' in info else '*'
                                     metric = info['metric']
