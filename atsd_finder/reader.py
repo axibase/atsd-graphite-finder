@@ -85,7 +85,7 @@ def _regularize(series):
     return time_info, values
 
 
-def str_to_sec(val):
+def _str_to_sec(val):
     unit = val[-1]
     num = val[:-1]
     if unit == 's':
@@ -102,8 +102,29 @@ def str_to_sec(val):
         return float(val)
 
 
+class Aggregator(object):
+    __slots__ = ('type', 'count', 'unit', 'interpolate')
+
+    def __init__(self, type, count, unit, interpolate='STEP'):
+        #: `str`
+        self.type = type
+        #: `Number`
+        self.count = count
+        #: `str`
+        self.unit = unit
+        #: `str`
+        self.interpolate = interpolate
+
+    def json(self):
+        return {
+            'type': self.type,
+            'interval': {'count': self.count, 'unit': self.unit},
+            'interpolate': self.interpolate
+        }
+
+
 class IntervalSchema(object):
-    # _map: interval -> step
+    # _map: interval -> step in seconds
 
     __slots__ = ('_map',)
 
@@ -133,7 +154,7 @@ class IntervalSchema(object):
                     intervals = self._config.get(section, 'retentions')  # str
                     items = re.split('\s*,\s*', intervals)  # list of str
                     pairs = (item.split(':') for item in items)  # str tuples
-                    self._map = dict((str_to_sec(b), str_to_sec(a))
+                    self._map = dict((_str_to_sec(b), _str_to_sec(a))
                                      for a, b in pairs)
                     return
 
@@ -143,12 +164,12 @@ class IntervalSchema(object):
 
         self._map = {}
 
-    def get_step(self, interval):
+    def aggregator(self, interval):
         """find step for current interval using interval schema
         return step of lowest schema interval that bigger than current
 
         :param interval: `Number` seconds
-        :return: step `Number` seconds
+        :return: :class:`.Aggregator` | None
         """
 
         intervals = self._map.keys()
@@ -161,7 +182,10 @@ class IntervalSchema(object):
             if interval <= i:
                 break
 
-        return step
+        if step:
+            return Aggregator('AVG', step, 'SECOND')
+        else:
+            return None
 
 
 class Instance(object):
@@ -218,16 +242,16 @@ class Instance(object):
         # print '============================='
 
         if response.status_code != 200:
-            raise RuntimeError('server response status_code='
-                               + str(response.status_code))
+            raise RuntimeError('server response status_code={:d} {:s}'
+                               .format(response.status_code, response.text))
 
         return response.json()
 
-    def query_series(self, start_time, end_time, step, aggregator):
+    def query_series(self, start_time, end_time, aggregator):
         """
         :param start_time: `Number` seconds
         :param end_time: `Number` seconds
-        :param step: `Number` seconds
+        :param aggregator: :class:`.Aggregator` | None
         :return: series data [{t,v}]
         """
 
@@ -247,13 +271,9 @@ class Instance(object):
             ]
         }
 
-        if step:
+        if aggregator:
             # request regularized data
-            data['queries'][0]['aggregate'] = {
-                'type': 'AVG' if aggregator == 'DETAIL' else aggregator,
-                'interpolate': 'STEP',
-                'interval': {'count': step, 'unit': 'SECOND'}
-            }
+            data['queries'][0]['aggregate'] = aggregator.json()
 
         resp = self._request('POST', 'series', data)
 
@@ -280,18 +300,16 @@ class Instance(object):
 
 class AtsdReader(object):
     __slots__ = ('_instance',
-                 'step',
                  'aggregator',
                  '_interval_schema')
 
-    def __init__(self, entity, metric, tags, step, aggregator):
+    def __init__(self, entity, metric, tags, aggregator=None):
         #: :class:`.Node`
         self._instance = Instance(entity, metric, tags)
         #: `Number` seconds, if 0 raw data
-        self.step = 0 if aggregator == 'DETAIL' else step
 
-        #: :class:`.AggregateType`
-        self.aggregator = aggregator if step else 'DETAIL'
+        #: :class:`.Aggregator` | `None`
+        self.aggregator = aggregator
 
         #: :class:`.IntervalSchema`
         self._interval_schema = IntervalSchema(metric)
@@ -300,10 +318,7 @@ class AtsdReader(object):
                  + ' metric=' + unicode(metric)
                  + ' tags=' + unicode(tags)
                  + ' url=' + unicode(settings.ATSD_CONF['url'])
-                 + ' step=' + unicode(step)
-                 + ' self.step=' + unicode(self.step)
-                 + ' aggregator=' + aggregator
-                 + ' self.aggregator=' + self.aggregator)
+                 + ' aggregator=' + str(aggregator))
 
     def fetch(self, start_time, end_time):
         """fetch time series
@@ -317,15 +332,14 @@ class AtsdReader(object):
             .format(start_time, end_time)
         )
 
-        if self.step:
-            step = self.step
+        if self.aggregator:
+            aggregator = self.aggregator
         else:
-            step = self._interval_schema.get_step(end_time - start_time)
+            aggregator = self._interval_schema.aggregator(end_time - start_time)
 
         series = self._instance.query_series(start_time,
                                              end_time,
-                                             step,
-                                             self.aggregator)
+                                             aggregator)
 
         log.info('[AtsdReader] get series of {:d} samples'.format(len(series)))
 
@@ -334,11 +348,11 @@ class AtsdReader(object):
         if len(series) == 1:
             return (start_time, end_time, end_time - start_time), [series[0]['v']]
 
-        if step:
+        if aggregator and aggregator.unit == 'SECOND':
             # data regularized, send as is
             time_info = (float(series[0]['t']) / 1000,
-                         float(series[-1]['t']) / 1000 + step,
-                         step)
+                         float(series[-1]['t']) / 1000 + aggregator.count,
+                         aggregator.count)
 
             values = [sample['v'] for sample in series]
         else:
