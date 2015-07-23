@@ -43,10 +43,12 @@ def get_info(pattern):
     
     specific = ['tag', 'const']
     
+    log.info('[AtsdInfo] ' + json.dumps(tokens))
+    
     for token in tokens:
         
-        token_type = token.keys()[0]
-        token_value = token[token_type]
+        token_type = token['type']
+        token_value = token['value']
         
         if not token_type in specific:
         
@@ -135,7 +137,8 @@ class AtsdFinder(object):
 
             for root in self.roots:
             
-                cell = {'type': root}
+                cell = {'type': 'type',
+                        'value': root}
                 
                 # self.log('path = ' + root)
 
@@ -150,7 +153,8 @@ class AtsdFinder(object):
             if info['type'] == 'entities':
                 for folder in self.entity_folders:
                 
-                    cell = {'entity folder': folder}
+                    cell = {'type': 'entity folder',
+                            'value': folder}
 
                     path = pattern + '.' + full_quote(json.dumps(cell))
                     # self.log('path = ' + path)
@@ -160,7 +164,8 @@ class AtsdFinder(object):
             elif info['type'] == 'metrics':
                 for folder in self.metric_folders:
                 
-                    cell = {'metric folder': folder}
+                    cell = {'type': 'metric folder',
+                            'value': folder}
 
                     path = pattern + '.' + full_quote(json.dumps(cell))
                     # self.log('path = ' + path)
@@ -195,9 +200,11 @@ class AtsdFinder(object):
                     label = unicode(smth['name']).encode('punycode')[:-1]
                     
                     if info['type'] == 'entities':
-                        cell = {'entity': label}
-                    elif info['type'] == 'metrics':
-                        cell = {'metric': label}
+                        cell = {'type': 'entity',
+                                'value': label}
+                    else:
+                        cell = {'type': 'metric',
+                                'value': label}
                     
                     path = pattern + '.' + full_quote(json.dumps(cell))
                     # self.log('path = ' + path)
@@ -229,9 +236,11 @@ class AtsdFinder(object):
                         label = unicode(smth['name']).encode('punycode')[:-1]
                         
                         if info['type'] == 'entities':
-                            cell = {'entity': label}
-                        elif info['type'] == 'metrics':
-                            cell = {'metric': label}
+                            cell = {'type': 'entity',
+                                    'value': label}
+                        else:
+                            cell = {'type': 'metric',
+                                    'value': label}
                         
                         path = pattern + '.' + full_quote(json.dumps(cell))
                         # self.log('path = ' + path)
@@ -254,7 +263,8 @@ class AtsdFinder(object):
 
                     label = unicode(metric['name']).encode('punycode')[:-1]
                     
-                    cell = {'metric': label}
+                    cell = {'type': 'metric',
+                            'value': label}
                     
                     path = pattern + '.' + full_quote(json.dumps(cell))
                     # self.log('path = ' + path)
@@ -281,7 +291,8 @@ class AtsdFinder(object):
 
                     label = unicode(entity).encode('punycode')[:-1]
                     
-                    cell = {'entity': label}
+                    cell = {'type': 'entity',
+                            'value': label}
                     
                     path = pattern + '.' + full_quote(json.dumps(cell))
                     # self.log('path = ' + path)
@@ -344,7 +355,8 @@ class AtsdFinder(object):
 
                             label = unicode(tag_name + ': ' + tag_combo[tag_name])
                             
-                            cell = {'tag': {tag_name: tag_combo[tag_name]}}
+                            cell = {'type': 'tag',
+                                    'value': {tag_name: tag_combo[tag_name]}}
                             
                             if not label in labels:
                             
@@ -359,7 +371,8 @@ class AtsdFinder(object):
                             
             if not found:
             
-                cell = {'detail': True}
+                cell = {'type': 'detail',
+                        'value': True}
                 
                 path = pattern + '.' + full_quote(json.dumps(cell))
                 # self.log('path = ' + path)
@@ -368,7 +381,8 @@ class AtsdFinder(object):
                 
                 yield AtsdLeafNode(path, u'detail', reader)
                 
-                cell = {'detail': False}
+                cell = {'type': 'detail',
+                        'value': False}
                 
                 path = pattern + '.' + full_quote(json.dumps(cell))
                 # self.log('path = ' + path)
@@ -391,7 +405,8 @@ class AtsdFinder(object):
             
                 for aggregator in self.aggregators:
                 
-                    cell = {'aggregator': aggregator}
+                    cell = {'type': 'aggregator',
+                            'value': aggregator}
                     
                     path = pattern + '.' + full_quote(json.dumps(cell))
                     # self.log('path = ' + path)
@@ -407,7 +422,8 @@ class AtsdFinder(object):
             
             for interval_name in self.interval_names:
                 
-                cell = {'interval': interval_name}
+                cell = {'type': 'interval',
+                        'value': interval_name}
             
                 path = pattern + '.' + full_quote(json.dumps(cell))
                 # self.log('path = ' + path)
