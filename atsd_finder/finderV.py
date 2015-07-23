@@ -138,8 +138,8 @@ class AtsdFinderV(object):
                 
                 token = build[info['tokens'] - 1]
                 
-                token_type = token.keys()[0]
-                token_value = token[token_type]
+                token_type = token['type']
+                token_value = token['value']
                 
                 if token_type == 'const':
                 
@@ -404,11 +404,14 @@ class AtsdFinderV(object):
                         
                 elif token_type == 'aggregator':
                 
-                    for aggregator in token_value:
+                    for aggregator_dict in token_value:
                     
-                        label = unicode(aggregator).encode('punycode')[:-1]
+                        aggregator = aggregator_dict.keys()[0]
+                        aggregator_label = aggregator_dict[aggregator]
+                    
+                        label = unicode(aggregator_label).encode('punycode')[:-1]
                         
-                        cell = {'aggregator': unicode(token_value[aggregator])}
+                        cell = {'aggregator': unicode(aggregator)}
                         
                         path = pattern + '.' + full_quote(json.dumps(cell))
                         # self.log('path = ' + path)
@@ -424,17 +427,20 @@ class AtsdFinderV(object):
                             tags = info['tags']
                             interval = info['interval'] if 'interval' in info else 0
                                 
-                            reader = AtsdReader(entity, metric, tags, interval, aggregator)
+                            reader = AtsdReader(entity, metric, tags, interval, aggregator.upper())
                             
                             yield AtsdLeafNode(path, label, reader)
                         
                 elif token_type == 'interval':
                 
-                    for interval in token_value:
+                    for interval_dict in token_value:
                     
-                        label = unicode(interval).encode('punycode')[:-1]
+                        interval = interval_dict.keys()[0]
+                        interval_label = interval_dict[interval]
+                    
+                        label = unicode(interval_label).encode('punycode')[:-1]
                         
-                        cell = {'interval': token_value[interval]}
+                        cell = {'interval': interval}
                         
                         path = pattern + '.' + full_quote(json.dumps(cell))
                         # self.log('path = ' + path)
