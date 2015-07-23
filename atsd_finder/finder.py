@@ -6,7 +6,7 @@ import os
 
 from graphite.local_settings import ATSD_CONF
 
-from .reader import AtsdReader
+from .reader import AtsdReader, Aggregator
 try:
     from graphite.logger import log
 except:
@@ -444,8 +444,11 @@ class AtsdFinder(object):
                 
                 interval = self.intervals[self.interval_names.index(interval_name)]
                 self.log('aggregator = ' + aggregator + ', interval = ' + unicode(interval))
-                
-                reader = AtsdReader(entity, metric, tags, interval, aggregator)
+
+                if interval != 0:
+                    reader = AtsdReader(entity, metric, tags, Aggregator(aggregator, interval))
+                else:
+                    reader = AtsdReader(entity, metric, tags)
                 
                 yield AtsdLeafNode(path, interval_name, reader)
                 
@@ -458,7 +461,10 @@ class AtsdFinder(object):
         
             interval = self.intervals[self.interval_names.index(info['interval'])]
             self.log('aggregator = ' + aggregator + ', interval = ' + unicode(interval))
-            
-            reader = AtsdReader(entity, metric, tags, interval, aggregator)
+
+            if interval != 0:
+                reader = AtsdReader(entity, metric, tags, Aggregator(aggregator, interval))
+            else:
+                reader = AtsdReader(entity, metric, tags)
             
             yield AtsdLeafNode(pattern, interval, reader)

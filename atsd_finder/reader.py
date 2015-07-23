@@ -105,7 +105,7 @@ def _str_to_sec(val):
 class Aggregator(object):
     __slots__ = ('type', 'count', 'unit', 'interpolate')
 
-    def __init__(self, type, count, unit, interpolate='STEP'):
+    def __init__(self, type, count, unit='SECOND', interpolate='STEP'):
         #: `str`
         self.type = type
         #: `Number`
