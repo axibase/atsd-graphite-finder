@@ -88,15 +88,15 @@ def _regularize(series):
 def str_to_sec(val):
     unit = val[-1]
     num = val[:-1]
-    if unit is 's':
+    if unit == 's':
         return float(num)
-    elif unit is 'm':
+    elif unit == 'm':
         return float(num) * 60
-    elif unit is 'h':
+    elif unit == 'h':
         return float(num) * 60 * 60
-    elif unit is 'd':
+    elif unit == 'd':
         return float(num) * 24 * 60 * 60
-    elif unit is 'y':
+    elif unit == 'y':
         return float(num) * 24 * 60 * 60 * 365.2425
     else:
         return float(val)
@@ -217,7 +217,7 @@ class Instance(object):
         # print '>>>content:', response.text
         # print '============================='
 
-        if response.status_code is not 200:
+        if response.status_code != 200:
             raise RuntimeError('server response status_code='
                                + str(response.status_code))
 
@@ -250,7 +250,7 @@ class Instance(object):
         if step:
             # request regularized data
             data['queries'][0]['aggregate'] = {
-                'type': 'AVG' if aggregator is 'DETAIL' else aggregator,
+                'type': 'AVG' if aggregator == 'DETAIL' else aggregator,
                 'interpolate': 'STEP',
                 'interval': {'count': step, 'unit': 'SECOND'}
             }
@@ -288,7 +288,7 @@ class AtsdReader(object):
         #: :class:`.Node`
         self._instance = Instance(entity, metric, tags)
         #: `Number` seconds, if 0 raw data
-        self.step = 0 if aggregator is 'DETAIL' else step
+        self.step = 0 if aggregator == 'DETAIL' else step
 
         #: :class:`.AggregateType`
         self.aggregator = aggregator if step else 'DETAIL'
@@ -299,7 +299,11 @@ class AtsdReader(object):
         log.info('[AtsdReader] init: entity=' + unicode(entity)
                  + ' metric=' + unicode(metric)
                  + ' tags=' + unicode(tags)
-                 + ' url=' + unicode(settings.ATSD_CONF['url']))
+                 + ' url=' + unicode(settings.ATSD_CONF['url'])
+                 + ' step=' + unicode(step)
+                 + ' self.step=' + unicode(self.step)
+                 + ' aggregator=' + aggregator
+                 + ' self.aggregator=' + self.aggregator)
 
     def fetch(self, start_time, end_time):
         """fetch time series
