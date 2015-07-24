@@ -145,6 +145,10 @@ class Aggregator(object):
         if not count:
             raise ValueError('Aggregator.count could not be ' + unicode(count))
 
+        type = type.upper()
+        unit = unit.upper()
+        interpolate = interpolate.upper()
+
         if unit == 'MILLISECOND':
             count /= 1000.0
             unit = 'SECOND'
