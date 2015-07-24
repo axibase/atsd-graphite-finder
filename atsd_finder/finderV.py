@@ -31,43 +31,6 @@ def unquote(string):
     return urllib.unquote(string)
 
 
-def get_info(pattern):
-
-    info = {
-        'tags': {}
-    }
-        
-    tokens = pattern.split('.')
-    tokens[:] = [json.loads(unquote(token)) for token in tokens] if pattern != '' else []
-    
-    info['tokens'] = len(tokens)
-    
-    specific = ['tag', 'const']
-    
-    log.info('[AtsdInfo] ' + json.dumps(tokens))
-    
-    for token in tokens:
-        
-        token_type = token['type']
-        token_value = token['value']
-        
-        if not token_type in specific:
-        
-            info[token_type] = token_value
-            
-        elif token_type == 'tag':
-        
-            for tag_name in token_value:
-            
-                tag_value = token_value[tag_name]
-                
-                info['tags'][tag_name] = tag_value
-            
-    log.info('[AtsdInfo] ' + json.dumps(info))
-    
-    return info
-
-
 class AtsdFinderV(object):
 
     roots = {'entities', 'metrics'}
@@ -97,6 +60,49 @@ class AtsdFinderV(object):
     def log(self, message):
     
         log.info('[' + self.__class__.__name__ + '] ' + message)
+        
+    def get_info(self, pattern):
+
+        info = {
+            'tags': {}
+        }
+            
+        tokens = pattern.split('.')
+        tokens[:] = [json.loads(unquote(token)) for token in tokens] if pattern != '' else []
+        log.info('[AtsdInfo] ' + json.dumps(tokens))
+        
+        info['tokens'] = len(tokens)
+        
+        if len(tokens) == 0:
+            return info
+            
+        info['build'] = tokens[0]['value']
+        build = self.builds[info['build']]
+        
+        specific = ['tag', 'const']
+        
+        for i, token in enumerate(tokens[1:]):
+            
+            token_type = token['type']
+            token_value = token['value']
+            
+            level = build[i-1]
+            
+            if not token_type in specific:
+            
+                info[token_type] = token_value
+                
+            elif token_type == 'tag':
+            
+                for tag_name in token_value:
+                
+                    tag_value = token_value[tag_name]
+                    
+                    info['tags'][tag_name] = tag_value
+                
+        log.info('[AtsdInfo] ' + json.dumps(info))
+        
+        return info
 
     def find_nodes(self, query):
 
@@ -111,7 +117,7 @@ class AtsdFinderV(object):
         
         self.log(pattern)
         
-        info = get_info(pattern)
+        info = self.get_info(pattern)
             
         if info['tokens'] == 0:
         
@@ -144,26 +150,26 @@ class AtsdFinderV(object):
             elif ind < length and not leaf_request:
                 
                 level = build[info['tokens'] - 1]
+                self.log('level = ' + unicode(level))
+                
+                level_type = level['type']
+                level_value = level['value']
                 
                 tokens = []
                 
-                if 'branch' in level:
-                
-                    level['branch'].update({'is leaf': False})
-                    tokens.append(level['branch'])
+                if level_type == 'multiple':
+                    for token in level_value:
+                        tokens.append(token)
+                else:
+                    tokens.append(level)
                     
-                if 'leaf' in level:
-                
-                    level['leaf'].update({'is leaf': True})
-                    tokens.append(level['leaf'])
-                    
-                self.log(unicode(tokens))
+                self.log('tokens = ' + unicode(tokens))
                     
                 for token in tokens:
                 
                     token_type = token['type']
                     token_value = token['value']
-                    last = token['is leaf']
+                    last = token['is leaf'] if 'is leaf' in token else False
                     
                     if token_type == 'const':
                     
