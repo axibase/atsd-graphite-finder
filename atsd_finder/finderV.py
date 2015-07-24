@@ -81,8 +81,12 @@ class AtsdFinderV(object):
         
         if len(tokens) == 0:
             return info
-            
-        info['build'] = tokens[0]['value']
+        
+        if tokens[0]['type'] == 'build':
+            info['build'] = tokens[0]['value']
+        else:
+            return info
+        
         build = self.builds[info['build']]
         
         specific = ['tag', 'const']
@@ -98,7 +102,7 @@ class AtsdFinderV(object):
                 for g_token in level['global']:
                 
                     g_token_type = g_token['type']
-                    g_token_value = g_token['value']
+                    g_token_value = g_token['value'][0]
                     
                     if not g_token_type in specific:
                         
@@ -140,7 +144,7 @@ class AtsdFinderV(object):
         
         g_info = self.get_info(pattern)
         
-        if g_info['valid'] == False:
+        if not g_info['valid']:
             raise StopIteration
             
         if g_info['tokens'] == 0:
@@ -158,7 +162,7 @@ class AtsdFinderV(object):
             
         else:
         
-            if 'build' not in g_info:
+            if 'build' not in g_info or not g_info['build']:
                 raise StopIteration
 
             build = self.builds[g_info['build']]
@@ -184,7 +188,7 @@ class AtsdFinderV(object):
                     for g_token in level['global']:
                     
                         g_token_type = g_token['type']
-                        g_token_value = g_token['value']
+                        g_token_value = g_token['value'][0]
                         
                         if not g_token_type in specific:
                             
@@ -219,7 +223,7 @@ class AtsdFinderV(object):
                         for l_token in token['local']:
                         
                             l_token_type = l_token['type']
-                            l_token_value = l_token['value']
+                            l_token_value = l_token['value'][0]
                             
                             if not l_token_type in specific:
                                 

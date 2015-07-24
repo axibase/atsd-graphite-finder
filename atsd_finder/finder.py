@@ -33,11 +33,16 @@ def unquote(string):
 def get_info(pattern):
 
     info = {
+        'valid': True,
         'tags': {}
     }
         
     tokens = pattern.split('.')
-    tokens[:] = [json.loads(unquote(token)) for token in tokens] if pattern != '' else []
+    try:
+        tokens[:] = [json.loads(unquote(token)) for token in tokens] if pattern != '' else []
+    except:
+        info['valid'] = False
+        return info
     
     info['tokens'] = len(tokens)
     
@@ -132,6 +137,9 @@ class AtsdFinder(object):
         pattern = query.pattern[:-2] if query.pattern[-1] == '*' else query.pattern
         
         info = get_info(pattern)
+        
+        if not info['valid']:
+            raise StopIteration
 
         if info['tokens'] == 0:
 
