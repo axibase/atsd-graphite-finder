@@ -130,7 +130,7 @@ def _str_to_interval(val):
 class Aggregator(object):
     __slots__ = ('type', 'count', 'unit', 'interpolate')
 
-    def __init__(self, count, type='AVG', unit='SECOND', interpolate='STEP'):
+    def __init__(self, type, count, unit='SECOND', interpolate='STEP'):
         # TODO: throw Exception if type == 'DETAIL'
         if not count:
             raise ValueError('Aggregator.count could not be ' + unicode(count))
@@ -226,7 +226,7 @@ class IntervalSchema(object):
                 break
 
         if count:
-            return Aggregator(count, 'AVG', unit)
+            return Aggregator('AVG', count, unit)
         else:  # unit = None
             return None
 

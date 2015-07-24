@@ -273,7 +273,9 @@ class AtsdFinderV(object):
                                 else:
                                     interval = info['interval']
                                     aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
-                                    reader = AtsdReader(entity, metric, tags, Aggregator(interval, aggregator))
+                                    reader = AtsdReader(entity, metric, tags,
+                                                        Aggregator(aggregator,
+                                                                   interval))
                                     
                                 yield AtsdLeafNode(path, label, reader)
                             
@@ -314,7 +316,10 @@ class AtsdFinderV(object):
                                     else:
                                         interval = info['interval']
                                         aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
-                                        reader = AtsdReader(entity, metric, tags, Aggregator(interval, aggregator))
+                                        reader = AtsdReader(entity, metric, tags,
+                                                            Aggregator(
+                                                                aggregator,
+                                                                interval))
                         
                                     yield AtsdLeafNode(path, label, reader)
                     
@@ -415,7 +420,10 @@ class AtsdFinderV(object):
                                     else:
                                         interval = info['interval']
                                         aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
-                                        reader = AtsdReader(entity['name'], metric, tags, Aggregator(interval, aggregator))
+                                        reader = AtsdReader(entity['name'], metric, tags,
+                                                            Aggregator(
+                                                                aggregator,
+                                                                interval))
                         
                                     yield AtsdLeafNode(path, label, reader)
                                 
@@ -482,7 +490,9 @@ class AtsdFinderV(object):
                                 else:
                                     interval = info['interval']
                                     aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
-                                    reader = AtsdReader(entity, metric['name'], tags, Aggregator(interval, aggregator))
+                                    reader = AtsdReader(entity, metric['name'], tags,
+                                                        Aggregator(aggregator,
+                                                                   interval))
                                 
                                 yield AtsdLeafNode(path, label, reader)
                                 
@@ -559,7 +569,10 @@ class AtsdFinderV(object):
                                         else:
                                             interval = info['interval']
                                             aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
-                                            reader = AtsdReader(entity, metric, tags, Aggregator(interval, aggregator))
+                                            reader = AtsdReader(entity, metric, tags,
+                                                                Aggregator(
+                                                                    aggregator,
+                                                                    interval))
                                             
                                         yield AtsdLeafNode(path, label, reader)
                             
@@ -593,7 +606,10 @@ class AtsdFinderV(object):
                                     reader = AtsdReader(entity, metric, tags)
                                 else:
                                     interval = info['interval']
-                                    reader = AtsdReader(entity, metric, tags, Aggregator(interval, aggregator.upper()))
+                                    reader = AtsdReader(entity, metric, tags,
+                                                        Aggregator(
+                                                            aggregator.upper(),
+                                                            interval))
                                 
                                 yield AtsdLeafNode(path, label, reader)
                             
@@ -627,7 +643,9 @@ class AtsdFinderV(object):
                                     reader = AtsdReader(entity, metric, tags)
                                 else:
                                     aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
-                                    reader = AtsdReader(entity, metric, tags, Aggregator(interval, aggregator))
+                                    reader = AtsdReader(entity, metric, tags,
+                                                        Aggregator(aggregator,
+                                                                   interval))
                                 
                                 yield AtsdLeafNode(path, label, reader)
                 
@@ -644,6 +662,7 @@ class AtsdFinderV(object):
                     else:
                         interval = g_info['interval']
                         aggregator = g_info['aggregator'].upper() if 'aggregator' in g_info else 'AVG'
-                        reader = AtsdReader(entity, metric, tags, Aggregator(interval, aggregator))
+                        reader = AtsdReader(entity, metric, tags,
+                                            Aggregator(aggregator, interval))
                 
                     yield AtsdLeafNode(pattern, '', reader)
