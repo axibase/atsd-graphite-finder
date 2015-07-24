@@ -64,11 +64,17 @@ class AtsdFinderV(object):
     def get_info(self, pattern):
 
         info = {
+            'valid': True
             'tags': {}
         }
             
         tokens = pattern.split('.')
-        tokens[:] = [json.loads(unquote(token)) for token in tokens] if pattern != '' else []
+        try:
+            tokens[:] = [json.loads(unquote(token)) for token in tokens] if pattern != '' else []
+        except:
+            info['valid'] = False
+            return info
+        
         self.log('tokens = ' + json.dumps(tokens))
         
         info['tokens'] = len(tokens)
@@ -133,6 +139,9 @@ class AtsdFinderV(object):
         # self.log(pattern)
         
         g_info = self.get_info(pattern)
+        
+        if g_info['valid'] == False:
+            raise StopIteration
             
         if g_info['tokens'] == 0:
         
@@ -150,7 +159,6 @@ class AtsdFinderV(object):
         else:
         
             if 'build' not in g_info:
-            
                 raise StopIteration
 
             build = self.builds[g_info['build']]
