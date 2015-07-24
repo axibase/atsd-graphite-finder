@@ -396,7 +396,7 @@ class AtsdFinder(object):
                 path = pattern + '.' + full_quote(json.dumps(cell))
                 # self.log('path = ' + path)
                 
-                reader = AtsdReader(entity, metric, tags, 0)
+                reader = AtsdReader(entity, metric, tags)
                 
                 yield AtsdLeafNode(path, u'detail', reader)
                 
@@ -417,7 +417,7 @@ class AtsdFinder(object):
                 metric = info['metric']
                 tags = info['tags']
                 
-                reader = AtsdReader(entity, metric, tags, 0)
+                reader = AtsdReader(entity, metric, tags)
                 
                 yield AtsdLeafNode(pattern, u'detail', reader)
             
@@ -454,8 +454,7 @@ class AtsdFinder(object):
                 self.log('aggregator = ' + aggregator + ', interval = ' + unicode(interval))
 
                 if interval != 0:
-                    reader = AtsdReader(entity, metric, tags,
-                                        Aggregator(interval, aggregator))
+                    reader = AtsdReader(entity, metric, tags, Aggregator(interval, aggregator))
                 else:
                     reader = AtsdReader(entity, metric, tags)
                 
@@ -472,8 +471,7 @@ class AtsdFinder(object):
             self.log('aggregator = ' + aggregator + ', interval = ' + unicode(interval))
 
             if interval != 0:
-                reader = AtsdReader(entity, metric, tags,
-                                    Aggregator(interval, aggregator))
+                reader = AtsdReader(entity, metric, tags, Aggregator(interval, aggregator))
             else:
                 reader = AtsdReader(entity, metric, tags)
             
