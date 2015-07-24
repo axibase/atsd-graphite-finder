@@ -268,14 +268,13 @@ class AtsdFinderV(object):
                                 metric = info['metric']
                                 tags = info['tags']
                                     
-                                if not 'interval' in info or info['interval'] == 0:
+                                if not 'interval' in info or info['interval']['count'] == 0:
                                     reader = AtsdReader(entity, metric, tags)
                                 else:
-                                    interval = info['interval']
+                                    interval_count = info['interval']['count']
+                                    interval_unit = info['interval']['unit']
                                     aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
-                                    reader = AtsdReader(entity, metric, tags,
-                                                        Aggregator(aggregator,
-                                                                   interval))
+                                    reader = AtsdReader(entity, metric, tags, Aggregator(aggregator, interval_count, interval_unit))
                                     
                                 yield AtsdLeafNode(path, label, reader)
                             
@@ -311,15 +310,13 @@ class AtsdFinderV(object):
                                     metric = info['metric']
                                     tags = info['tags']
                                         
-                                    if not 'interval' in info or info['interval'] == 0:
+                                    if not 'interval' in info or info['interval']['count'] == 0:
                                         reader = AtsdReader(entity, metric, tags)
                                     else:
-                                        interval = info['interval']
+                                        interval_count = info['interval']['count']
+                                        interval_unit = info['interval']['unit']
                                         aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
-                                        reader = AtsdReader(entity, metric, tags,
-                                                            Aggregator(
-                                                                aggregator,
-                                                                interval))
+                                        reader = AtsdReader(entity, metric, tags, Aggregator(aggregator, interval_count, interval_unit))
                         
                                     yield AtsdLeafNode(path, label, reader)
                     
@@ -415,15 +412,13 @@ class AtsdFinderV(object):
                                     metric = info['metric']
                                     tags = info['tags']
                                         
-                                    if not 'interval' in info or info['interval'] == 0:
+                                    if not 'interval' in info or info['interval']['count'] == 0:
                                         reader = AtsdReader(entity['name'], metric, tags)
                                     else:
-                                        interval = info['interval']
+                                        interval_count = info['interval']['count']
+                                        interval_unit = info['interval']['unit']
                                         aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
-                                        reader = AtsdReader(entity['name'], metric, tags,
-                                                            Aggregator(
-                                                                aggregator,
-                                                                interval))
+                                        reader = AtsdReader(entity['name'], metric, tags, Aggregator(aggregator, interval_count, interval_unit))
                         
                                     yield AtsdLeafNode(path, label, reader)
                                 
@@ -485,14 +480,13 @@ class AtsdFinderV(object):
                                 entity = info['entity'] if 'entity' in info else '*'
                                 tags = info['tags']
                                 
-                                if not 'interval' in info or info['interval'] == 0:
+                                if not 'interval' in info or info['interval']['count'] == 0:
                                     reader = AtsdReader(entity, metric['name'], tags)
                                 else:
-                                    interval = info['interval']
+                                    interval_count = info['interval']['count']
+                                    interval_unit = info['interval']['unit']
                                     aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
-                                    reader = AtsdReader(entity, metric['name'], tags,
-                                                        Aggregator(aggregator,
-                                                                   interval))
+                                    reader = AtsdReader(entity, metric['name'], tags, Aggregator(aggregator, interval_count, interval_unit))
                                 
                                 yield AtsdLeafNode(path, label, reader)
                                 
@@ -564,15 +558,13 @@ class AtsdFinderV(object):
                                         entity = info['entity'] if 'entity' in info else '*'
                                         metric = info['metric']
                                         
-                                        if not 'interval' in info or info['interval'] == 0:
+                                        if not 'interval' in info or info['interval']['count'] == 0:
                                             reader = AtsdReader(entity, metric, tags)
                                         else:
-                                            interval = info['interval']
+                                            interval_count = info['interval']['count']
+                                            interval_unit = info['interval']['unit']
                                             aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
-                                            reader = AtsdReader(entity, metric, tags,
-                                                                Aggregator(
-                                                                    aggregator,
-                                                                    interval))
+                                            reader = AtsdReader(entity, metric, tags, Aggregator(aggregator, interval_count, interval_unit))
                                             
                                         yield AtsdLeafNode(path, label, reader)
                             
@@ -602,14 +594,12 @@ class AtsdFinderV(object):
                                 metric = info['metric']
                                 tags = info['tags']
                                     
-                                if not 'interval' in info or info['interval'] == 0:
+                                if not 'interval' in info or info['interval']['count'] == 0:
                                     reader = AtsdReader(entity, metric, tags)
                                 else:
-                                    interval = info['interval']
-                                    reader = AtsdReader(entity, metric, tags,
-                                                        Aggregator(
-                                                            aggregator.upper(),
-                                                            interval))
+                                    interval_count = info['interval']['count']
+                                    interval_unit = info['interval']['unit']
+                                    reader = AtsdReader(entity, metric, tags, Aggregator(aggregator, interval_count, interval_unit))
                                 
                                 yield AtsdLeafNode(path, label, reader)
                             
@@ -617,13 +607,15 @@ class AtsdFinderV(object):
                     
                         for interval_dict in token_value:
                         
-                            interval = interval_dict.keys()[0]
-                            interval_label = interval_dict[interval]
+                            interval_count = interval_dict['count']
+                            interval_unit = interval_dict['unit']
+                            interval_label = interval_dict['label']
                         
                             label = unicode(interval_label).encode('punycode')[:-1]
                             
                             cell = {'type': 'interval',
-                                    'value': interval,
+                                    'value': {'count': interval_count,
+                                              'unit': interval_unit},
                                     'label': label}
                             
                             path = pattern + '.' + full_quote(json.dumps(cell))
@@ -639,13 +631,11 @@ class AtsdFinderV(object):
                                 metric = info['metric']
                                 tags = info['tags']
                                     
-                                if interval == 0:
+                                if interval_count == 0:
                                     reader = AtsdReader(entity, metric, tags)
                                 else:
                                     aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
-                                    reader = AtsdReader(entity, metric, tags,
-                                                        Aggregator(aggregator,
-                                                                   interval))
+                                    reader = AtsdReader(entity, metric, tags, Aggregator(aggregator, interval_count, interval_unit))
                                 
                                 yield AtsdLeafNode(path, label, reader)
                 
@@ -657,12 +647,13 @@ class AtsdFinderV(object):
                     metric = g_info['metric']
                     tags = g_info['tags']
                         
-                    if not 'interval' in g_info or g_info['interval'] == 0:
+                    if not 'interval' in g_info or g_info['interval']['count'] == 0:
                         reader = AtsdReader(entity, metric, tags)
                     else:
-                        interval = g_info['interval']
+                        interval_count = g_info['interval']['count']
+                        interval_unit = g_info['interval']['unit']
                         aggregator = g_info['aggregator'].upper() if 'aggregator' in g_info else 'AVG'
                         reader = AtsdReader(entity, metric, tags,
-                                            Aggregator(aggregator, interval))
+                                            Aggregator(aggregator, interval_count, interval_unit))
                 
                     yield AtsdLeafNode(pattern, '', reader)
