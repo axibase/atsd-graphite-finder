@@ -23,12 +23,25 @@ class TestAtsdFinder(unittest.TestCase):
 
         self.assertListEqual(vals_group, vals_day)
 
-    def test_reader_fetch(self):
+    def test_reader_fetch_tags(self):
         now = time.time()
         reader = atsd_finder.AtsdReader('atsd',
                                         'metric_gets_per_second',
                                         {'host': 'NURSWGVML007'},
                                         Aggregator('AVG', 5, 'SECOND'))
+        time_info, values = reader.fetch(now - 24 * 60 * 60, now)
+
+        start = time_info[0]
+        end = time_info[1]
+        step = time_info[2]
+        self.assertEqual((end - start) / step, float(len(values)))
+
+    def test_reader_fetch_wildcard_aggregate(self):
+        now = time.time()
+        reader = atsd_finder.AtsdReader('nurswgvml*',
+                                        'cpu_busy',
+                                        {},
+                                        Aggregator('DELTA', 5, 'SECOND'))
         time_info, values = reader.fetch(now - 24 * 60 * 60, now)
 
         start = time_info[0]

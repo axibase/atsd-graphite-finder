@@ -18,6 +18,16 @@ except:  # debug env
     log.info('running in debugging environment')
 
 
+NON_GROUP_STATS = ('FIRST',
+                   'LAST',
+                   'DELTA',
+                   'WAVG',
+                   'WTAVG',
+                   'THRESHOLD_COUNT',
+                   'THRESHOLD_DURATION',
+                   'THRESHOLD_PERCENT')
+
+
 def _round_step(step):
     """example: 5003 -> 5000
     """
@@ -316,7 +326,14 @@ class Instance(object):
 
         if aggregator and not aggregator.type == 'DETAIL':
             # request regularized data
-            data['queries'][0]['group'] = aggregator.json()
+            if aggregator.type in NON_GROUP_STATS:
+                data['queries'][0]['group'] = {"type": "SUM",
+                                               "interval": {
+                                                   "count": aggregator.count,
+                                                   "unit": aggregator.unit}}
+                data['queries'][0]['aggregate'] = aggregator.json()
+            else:
+                data['queries'][0]['group'] = aggregator.json()
 
         resp = self._request('POST', 'series', data)
 
