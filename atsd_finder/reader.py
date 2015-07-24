@@ -131,6 +131,7 @@ class Aggregator(object):
     __slots__ = ('type', 'count', 'unit', 'interpolate')
 
     def __init__(self, count, type='AVG', unit='SECOND', interpolate='STEP'):
+        # TODO: throw Exception if type == 'DETAIL'
         if not count:
             raise ValueError('Aggregator.count could not be ' + unicode(count))
 
@@ -313,9 +314,9 @@ class Instance(object):
             ]
         }
 
-        if aggregator:
+        if aggregator and not aggregator.type == 'DETAIL':
             # request regularized data
-            data['queries'][0]['aggregate'] = aggregator.json()
+            data['queries'][0]['group'] = aggregator.json()
 
         resp = self._request('POST', 'series', data)
 
@@ -413,9 +414,12 @@ class AtsdReader(object):
         log.info('[AtsdReader] getting_intervals')
 
         metric = self._instance.get_metric()
-        entity = self._instance.get_entity()
-
-        end_time = max(metric['lastInsertTime'], entity['lastInsertTime'])
+        try:
+            entity = self._instance.get_entity()
+        except RuntimeError:  # server response != 200
+            end_time = metric['lastInsertTime']
+        else:
+            end_time = max(metric['lastInsertTime'], entity['lastInsertTime'])
 
         retention = metric['retentionInterval']
         start_time = (end_time - retention) if retention else 1

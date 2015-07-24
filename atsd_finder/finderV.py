@@ -64,7 +64,7 @@ class AtsdFinderV(object):
     def get_info(self, pattern):
 
         info = {
-            'valid': True
+            'valid': True,
             'tags': {}
         }
             
