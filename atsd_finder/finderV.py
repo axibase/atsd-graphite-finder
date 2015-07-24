@@ -205,7 +205,7 @@ class AtsdFinderV(object):
                 
                 tokens = []
                 
-                if level_type == 'multiple':
+                if level_type == 'collection':
                     for token in level_value:
                         tokens.append(token)
                 else:
