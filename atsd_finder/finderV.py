@@ -69,7 +69,7 @@ class AtsdFinderV(object):
             
         tokens = pattern.split('.')
         tokens[:] = [json.loads(unquote(token)) for token in tokens] if pattern != '' else []
-        log.info('[AtsdInfo] ' + json.dumps(tokens))
+        self.log('tokens = ' + json.dumps(tokens))
         
         info['tokens'] = len(tokens)
         
@@ -86,8 +86,26 @@ class AtsdFinderV(object):
             token_type = token['type']
             token_value = token['value']
             
-            level = build[i-1]
+            level = build[i]
             
+            if 'global' in level:
+                for g_token in level['global']:
+                
+                    g_token_type = g_token['type']
+                    g_token_value = g_token['value']
+                    
+                    if not g_token_type in specific:
+                        
+                        info[g_token_type] = g_token_value
+                        
+                    elif g_token_type == 'tag':
+                    
+                        for tag_name in g_token_value:
+                
+                            tag_value = g_token_value[tag_name]
+                            
+                            info['tags'][tag_name] = tag_value
+                    
             if not token_type in specific:
             
                 info[token_type] = token_value
@@ -99,14 +117,12 @@ class AtsdFinderV(object):
                     tag_value = token_value[tag_name]
                     
                     info['tags'][tag_name] = tag_value
-                
-        log.info('[AtsdInfo] ' + json.dumps(info))
         
         return info
 
     def find_nodes(self, query):
 
-        self.log('finding nodes: query = ' + unicode(query.pattern))
+        # self.log('finding nodes: query = ' + unicode(query.pattern))
         
         if len(query.pattern) != 0 and query.pattern[-1] != '*':
             leaf_request = True
@@ -114,12 +130,11 @@ class AtsdFinderV(object):
             leaf_request = False
         
         pattern = query.pattern[:-2] if not leaf_request else query.pattern
+        # self.log(pattern)
         
-        self.log(pattern)
-        
-        info = self.get_info(pattern)
+        g_info = self.get_info(pattern)
             
-        if info['tokens'] == 0:
+        if g_info['tokens'] == 0:
         
             for build_name in self.builds:
         
@@ -134,13 +149,13 @@ class AtsdFinderV(object):
             
         else:
         
-            if 'build' not in info:
+            if 'build' not in g_info:
             
                 raise StopIteration
 
-            build = self.builds[info['build']]
+            build = self.builds[g_info['build']]
                 
-            ind = info['tokens'] - 1
+            ind = g_info['tokens'] - 1
             length = len(build)
                 
             if ind > length:
@@ -149,11 +164,32 @@ class AtsdFinderV(object):
                 
             elif ind < length and not leaf_request:
                 
-                level = build[info['tokens'] - 1]
+                level = build[g_info['tokens'] - 1]
                 self.log('level = ' + unicode(level))
                 
                 level_type = level['type']
                 level_value = level['value']
+                
+                specific = ['tag', 'const']
+                
+                if 'global' in level:
+                    for g_token in level['global']:
+                    
+                        g_token_type = g_token['type']
+                        g_token_value = g_token['value']
+                        
+                        if not g_token_type in specific:
+                            
+                            g_info[g_token_type] = g_token_value
+                            
+                        elif g_token_type == 'tag':
+                        
+                            for tag_name in g_token_value:
+                            
+                                tag_value = g_token_value[tag_name]
+                                g_info['tags'][tag_name] = tag_value
+                                
+                self.log('global info = ' + json.dumps(g_info))
                 
                 tokens = []
                 
@@ -166,6 +202,29 @@ class AtsdFinderV(object):
                 self.log('tokens = ' + unicode(tokens))
                     
                 for token in tokens:
+                
+                    info = copy.deepcopy(g_info)
+                    
+                    specific = ['tag', 'const']
+                    
+                    if 'local' in token:
+                        for l_token in token['local']:
+                        
+                            l_token_type = l_token['type']
+                            l_token_value = l_token['value']
+                            
+                            if not l_token_type in specific:
+                                
+                                info[l_token_type] = l_token_value
+                                
+                            elif l_token_type == 'tag':
+                            
+                                for tag_name in l_token_value:
+                                
+                                    tag_value = l_token_value[tag_name]
+                                    info['tags'][tag_name] = tag_value
+                                    
+                    self.log('local info = ' + unicode(info))
                 
                     token_type = token['type']
                     token_value = token['value']
@@ -415,11 +474,11 @@ class AtsdFinderV(object):
                                 aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
 
                                 if interval != 0:
-                                    reader = AtsdReader(entity, metric, tags,
+                                    reader = AtsdReader(entity, metric['name'], tags,
                                                         Aggregator(interval,
                                                                    aggregator))
                                 else:
-                                    reader = AtsdReader(entity, metric, tags)
+                                    reader = AtsdReader(entity, metric['name'], tags)
                                 
                                 yield AtsdLeafNode(path, label, reader)
                                 
@@ -579,13 +638,13 @@ class AtsdFinderV(object):
                 
             elif leaf_request:
             
-                if 'metric' in info:
+                if 'metric' in g_info:
             
-                    entity = info['entity'] if 'entity' in info else '*'
-                    metric = info['metric']
-                    tags = info['tags']
-                    interval = info['interval'] if 'interval' in info else 0
-                    aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
+                    entity = g_info['entity'] if 'entity' in g_info else '*'
+                    metric = g_info['metric']
+                    tags = g_info['tags']
+                    interval = g_info['interval'] if 'interval' in g_info else 0
+                    aggregator = g_info['aggregator'].upper() if 'aggregator' in g_info else 'AVG'
 
                     if interval != 0:
                         reader = AtsdReader(entity, metric, tags,
