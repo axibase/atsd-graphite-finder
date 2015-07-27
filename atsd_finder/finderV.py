@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import requests
 import urllib
 import json
@@ -29,7 +31,13 @@ def full_quote(string):
 def unquote(string):
 
     return urllib.unquote(string)
+    
+    
+def puny_quote(string):
 
+    puny_string = unicode(string).encode('punycode')
+    return puny_string[0:puny_string.rfind('-')]
+    
 
 class AtsdFinderV(object):
 
@@ -270,7 +278,7 @@ class AtsdFinderV(object):
                     
                         for string in token_value:
                     
-                            label = unicode(string).encode('punycode')[:-1]
+                            label = puny_quote(string)
                             '''
                             cell = {'type': 'const',
                                     'value': unicode(string),
@@ -314,7 +322,7 @@ class AtsdFinderV(object):
                             if token_type not in info \
                                or token_type in info and fnmatch.fnmatch(unicode(folder), info[token_type]):
                         
-                                label = unicode(folder_label).encode('punycode')[:-1]
+                                label = puny_quote(folder_label)
                                 '''
                                 cell = {'type': token_type,
                                         'value': unicode(folder),
@@ -385,7 +393,7 @@ class AtsdFinderV(object):
                             
                             for entity in response.json():
 
-                                label = unicode(entity['name']).encode('punycode')[:-1]
+                                label = puny_quote(entity['name'])
                                 '''
                                 cell = {'type': 'entity',
                                         'value': unicode(entity['name']),
@@ -424,7 +432,7 @@ class AtsdFinderV(object):
                                 if not matches:
                                     continue
 
-                                label = unicode(entity).encode('punycode')[:-1]
+                                label = puny_quote(entity)
                                 '''
                                 cell = {'type': 'entity',
                                         'value': unicode(entity),
@@ -494,7 +502,7 @@ class AtsdFinderV(object):
                         
                         for metric in response.json():
 
-                            label = unicode(metric['name']).encode('punycode')[:-1]
+                            label = puny_quote(metric['name'])
                             '''
                             cell = {'type': 'metric',
                                     'value': unicode(metric['name']),
@@ -571,7 +579,7 @@ class AtsdFinderV(object):
                                     
                                     tag_combos.append(tag_combo)
                                 
-                                    label = unicode(', '.join(tag_values)).encode('punycode')[:-1]
+                                    label = puny_quote(', '.join(tag_values))
                                     '''
                                     cell = {'type': 'tag',
                                             'value': tag_combo,
@@ -611,7 +619,7 @@ class AtsdFinderV(object):
                             aggregator = aggregator_dict.keys()[0]
                             aggregator_label = aggregator_dict[aggregator]
                         
-                            label = unicode(aggregator_label).encode('punycode')[:-1]
+                            label = puny_quote(aggregator_label)
                             '''
                             cell = {'type': 'aggregator',
                                     'value': unicode(aggregator),
@@ -649,7 +657,7 @@ class AtsdFinderV(object):
                             interval_unit = interval_dict['unit']
                             interval_label = interval_dict['label']
                         
-                            label = unicode(interval_label).encode('punycode')[:-1]
+                            label = puny_quote(interval_label)
                             '''
                             cell = {'type': 'interval',
                                     'value': {'count': interval_count,
