@@ -62,6 +62,19 @@ class AtsdFinderV(object):
         log.info('[' + self.__class__.__name__ + '] ' + message)
         
     def get_info(self, pattern):
+    
+        type_dict = {
+            'b': 'build',
+            'y': 'type',
+            'c': 'const',
+            'e': 'entity',
+            'm': 'metric',
+            'ef': 'entity folder',
+            'mf': 'metric folder',
+            'i': 'interval',
+            'a': 'aggregator',
+            't': 'tag'
+        }
 
         info = {
             'valid': True,
@@ -81,9 +94,14 @@ class AtsdFinderV(object):
         
         if len(tokens) == 0:
             return info
-        
-        if tokens[0]['type'] == 'build':
+        '''
+        if tokens[0]['type'] == 'b':
             info['build'] = tokens[0]['value']
+        else:
+            return info
+        '''
+        if tokens[0][0] == 'b':
+            info['build'] = tokens[0][1]
         else:
             return info
         
@@ -92,10 +110,7 @@ class AtsdFinderV(object):
         specific = ['tag', 'const']
         
         for i, token in enumerate(tokens[1:]):
-            
-            token_type = token['type']
-            token_value = token['value']
-            
+        
             level = build[i]
             
             if 'global' in level:
@@ -115,6 +130,13 @@ class AtsdFinderV(object):
                             tag_value = g_token_value[tag_name]
                             
                             info['tags'][tag_name] = tag_value
+            '''
+            token_type = type_dict[token['type']]
+            token_value = token['value']
+            '''
+            
+            token_type = type_dict[token[0]]
+            token_value = token[1]
                     
             if not token_type in specific:
             
@@ -150,10 +172,12 @@ class AtsdFinderV(object):
         if g_info['tokens'] == 0:
         
             for build_name in self.builds:
-        
+                '''
                 cell = {'type': 'build',
                         'value': build_name,
                         'label': build_name}
+                '''
+                cell = ['b', build_name, build_name]
                 
                 path = full_quote(json.dumps(cell))
                 # self.log('path = ' + path)
@@ -247,11 +271,13 @@ class AtsdFinderV(object):
                         for string in token_value:
                     
                             label = unicode(string).encode('punycode')[:-1]
-                                
+                            '''
                             cell = {'type': 'const',
                                     'value': unicode(string),
                                     'label': label}
-                                
+                            '''
+                            cell = ['c', unicode(string), label]
+                            
                             path = pattern + '.' + full_quote(json.dumps(cell))
                         
                             if not is_leaf:
@@ -289,10 +315,12 @@ class AtsdFinderV(object):
                                or token_type in info and fnmatch.fnmatch(unicode(folder), info[token_type]):
                         
                                 label = unicode(folder_label).encode('punycode')[:-1]
-                                
+                                '''
                                 cell = {'type': token_type,
                                         'value': unicode(folder),
                                         'label': label}
+                                '''
+                                cell = [token_type[0] + 'f', unicode(folder), label]
                                 
                                 path = pattern + '.' + full_quote(json.dumps(cell))
 
@@ -358,10 +386,12 @@ class AtsdFinderV(object):
                             for entity in response.json():
 
                                 label = unicode(entity['name']).encode('punycode')[:-1]
-                                
+                                '''
                                 cell = {'type': 'entity',
                                         'value': unicode(entity['name']),
                                         'label': label}
+                                '''
+                                cell = ['e', unicode(entity['name']), label]
                                 
                                 path = pattern + '.' + full_quote(json.dumps(cell))
                                 # self.log('path = ' + path)
@@ -395,10 +425,12 @@ class AtsdFinderV(object):
                                     continue
 
                                 label = unicode(entity).encode('punycode')[:-1]
-                                
+                                '''
                                 cell = {'type': 'entity',
                                         'value': unicode(entity),
                                         'label': label}
+                                '''
+                                cell = ['e', unicode(entity), label]
                                 
                                 path = pattern + '.' + full_quote(json.dumps(cell))
                                 # self.log('path = ' + path)
@@ -463,10 +495,12 @@ class AtsdFinderV(object):
                         for metric in response.json():
 
                             label = unicode(metric['name']).encode('punycode')[:-1]
-                            
+                            '''
                             cell = {'type': 'metric',
                                     'value': unicode(metric['name']),
                                     'label': label}
+                            '''
+                            cell = ['m', unicode(metric['name']), label]
                             
                             path = pattern + '.' + full_quote(json.dumps(cell))
                             # self.log('path = ' + path)
@@ -538,11 +572,13 @@ class AtsdFinderV(object):
                                     tag_combos.append(tag_combo)
                                 
                                     label = unicode(', '.join(tag_values)).encode('punycode')[:-1]
-                                
+                                    '''
                                     cell = {'type': 'tag',
                                             'value': tag_combo,
                                             'label': label}
-                                
+                                    '''
+                                    cell = ['t', tag_combo, label]
+                                    
                                     path = pattern + '.' + full_quote(json.dumps(cell))
                                     # self.log('path = ' + path)
                                 
@@ -576,10 +612,12 @@ class AtsdFinderV(object):
                             aggregator_label = aggregator_dict[aggregator]
                         
                             label = unicode(aggregator_label).encode('punycode')[:-1]
-                            
+                            '''
                             cell = {'type': 'aggregator',
                                     'value': unicode(aggregator),
                                     'label': label}
+                            '''
+                            cell = ['a', unicode(aggregator), label]
                             
                             path = pattern + '.' + full_quote(json.dumps(cell))
                             # self.log('path = ' + path)
@@ -612,11 +650,13 @@ class AtsdFinderV(object):
                             interval_label = interval_dict['label']
                         
                             label = unicode(interval_label).encode('punycode')[:-1]
-                            
+                            '''
                             cell = {'type': 'interval',
                                     'value': {'count': interval_count,
                                               'unit': interval_unit},
                                     'label': label}
+                            '''
+                            cell = ['i', {'count': interval_count, 'unit': interval_unit}, label]
                             
                             path = pattern + '.' + full_quote(json.dumps(cell))
                             # self.log('path = ' + path)
