@@ -106,24 +106,24 @@ class AtsdFinder(object):
             self.aggregators = ATSD_CONF['aggregators']
         except KeyError:
             self.aggregators = {
-                'Count'                 : 'count',
-                'Minimum'               : 'min',
-                'Maximum'               : 'max',
-                'Average'               : 'avg',
-                'Median'                : 'median',
-                'Sum'                   : 'sum',
-                'Percentile 99.9%'      : 'percentile_999',
-                'Percentile 99.5%'      : 'percentile_995',
-                'Percentile 99%'        : 'percentile_99',
-                'Percentile 95%'        : 'percentile_95',
-                'Percentile 90%'        : 'percentile_90',
-                'Percentile 75%'        : 'percentile_75',
-                'First value'           : 'first',
-                'Last value'            : 'last',
-                'Delta'                 : 'delta',
-                'Weighted average'      : 'wavg',
-                'Weighted time average' : 'wtavg',
-                'Standard deviation'    : 'standard_deviation'
+                'avg'               : 'Average',
+                'min'               : 'Minimum',
+                'max'               : 'Maximum',
+                'sum'               : 'Sum',
+                'count'             : 'Count',
+                'first'             : 'First value',
+                'last'              : 'Last value',
+                'percentile_999'    : 'Percentile 99.9%',
+                'percentile_99'     : 'Percentile 99%',
+                'percentile_995'    : 'Percentile 99.5%',
+                'percentile_95'     : 'Percentile 95%',
+                'percentile_90'     : 'Percentile 90%',
+                'percentile_75'     : 'Percentile 75%',
+                'median'            : 'Median',
+                'standard_deviation': 'Standard deviation',
+                'delta'             : 'Delta',
+                'wavg'              : 'Weighted average',
+                'wtavg'             : 'Weighted time average',
             }
 
     def log(self, message):
@@ -432,14 +432,14 @@ class AtsdFinder(object):
                     path = pattern + '.' + full_quote(json.dumps(cell))
                     # self.log('path = ' + path)
                     
-                    yield AtsdBranchNode(path, aggregator)
+                    yield AtsdBranchNode(path, self.aggregators[aggregator])
             
         elif not 'interval' in info:
 
             entity = info['entity']
             metric = info['metric']
             tags = info['tags']
-            aggregator = self.aggregators[info['aggregator']].upper()
+            aggregator = info['aggregator'].upper()
             
             for interval_name in self.interval_names:
                 
@@ -454,8 +454,7 @@ class AtsdFinder(object):
                 self.log('aggregator = ' + aggregator + ', interval = ' + unicode(interval))
 
                 if interval != 0:
-                    reader = AtsdReader(entity, metric, tags,
-                                        Aggregator(aggregator, interval))
+                    reader = AtsdReader(entity, metric, tags, Aggregator(aggregator, interval))
                 else:
                     reader = AtsdReader(entity, metric, tags)
                 
@@ -466,14 +465,13 @@ class AtsdFinder(object):
             entity = info['entity']
             metric = info['metric']
             tags = info['tags']
-            aggregator = self.aggregators[info['aggregator']].upper()
+            aggregator = info['aggregator'].upper()
         
             interval = self.intervals[self.interval_names.index(info['interval'])]
             self.log('aggregator = ' + aggregator + ', interval = ' + unicode(interval))
 
             if interval != 0:
-                reader = AtsdReader(entity, metric, tags,
-                                    Aggregator(aggregator, interval))
+                reader = AtsdReader(entity, metric, tags, Aggregator(aggregator, interval))
             else:
                 reader = AtsdReader(entity, metric, tags)
             
