@@ -20,17 +20,17 @@ from .node import AtsdBranchNode, AtsdLeafNode
   
 def quote(string):
 
-    return urllib.quote(string, safe='*')
+    return urllib.quote(string.encode('utf8'), safe='*')
     
     
 def full_quote(string):
 
-    return urllib.quote(string, safe='').replace('.', '%2E')
+    return urllib.quote(string.encode('utf8'), safe='').replace('.', '%2E')
     
     
 def unquote(string):
 
-    return urllib.unquote(string)
+    return urllib.unquote(string.encode('utf8'))
     
 
 class AtsdFinderV(object):

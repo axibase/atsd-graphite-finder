@@ -17,17 +17,17 @@ from .node import AtsdBranchNode, AtsdLeafNode
   
 def quote(string):
 
-    return urllib.quote(string, safe='')
+    return urllib.quote(string.encode('utf8'), safe='')
     
     
 def full_quote(string):
 
-    return urllib.quote(string, safe='').replace('.', '%2E')
+    return urllib.quote(string.encode('utf8'), safe='').replace('.', '%2E')
     
     
 def unquote(string):
 
-    return urllib.unquote(string)
+    return urllib.unquote(string.encode('utf8'))
 
 
 def get_info(pattern):
@@ -91,8 +91,8 @@ def get_info(pattern):
 class AtsdFinder(object):
 
     roots = {'entities', 'metrics'}
-    intervals = [60, 3600, 86400]
-    interval_names = ['1 min', '1 hour', '1 day']
+    intervals = [1, 60, 3600, 86400]
+    interval_names = ['1 sec', '1 min', '1 hour', '1 day']
 
     def __init__(self):
     
@@ -231,7 +231,7 @@ class AtsdFinder(object):
 
                 if not other:
 
-                    label = unicode(smth['name']).encode('punycode')[:-1]
+                    label = smth['name']
                     
                     if info['type'] == 'entities':
                         '''
@@ -276,7 +276,7 @@ class AtsdFinder(object):
 
                     if not matches:
 
-                        label = unicode(smth['name']).encode('punycode')[:-1]
+                        label = smth['name']
                         
                         if info['type'] == 'entities':
                             '''
@@ -313,7 +313,7 @@ class AtsdFinder(object):
 
                 for metric in response.json():
 
-                    label = unicode(metric['name']).encode('punycode')[:-1]
+                    label = metric['name']
                     '''
                     cell = {'type': 'metric',
                             'value': label,
@@ -343,19 +343,17 @@ class AtsdFinder(object):
                     entities.add(entity['entity'])
 
                 for entity in entities:
-
-                    label = unicode(entity).encode('punycode')[:-1]
                     '''
                     cell = {'type': 'entity',
-                            'value': label,
-                            'label': label}
+                            'value': entity,
+                            'label': entity}
                     '''
-                    cell = ['e', label, label]
+                    cell = ['e', entity, entity]
                     
                     path = pattern + '.' + full_quote(json.dumps(cell))
                     # self.log('path = ' + path)
                     
-                    yield AtsdBranchNode(path, label)
+                    yield AtsdBranchNode(path, entity)
 
         elif info['tokens'] > 3 and not 'detail' in info:
 
