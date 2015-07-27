@@ -15,9 +15,10 @@ try:
 except:  # debug env
     from graphite import settings
     import default_logger as log
-    log.info('running in debugging environment')
+    log.info('running in debug environment')
 
 
+# statistics applicable for aggregate, but not for group
 NON_GROUP_STATS = ('FIRST',
                    'LAST',
                    'DELTA',
@@ -350,7 +351,7 @@ class Instance(object):
         """
 
         return self._request('GET',
-                             'metrics/' + urllib.quote(self.metric_name, ''))
+                             'metrics/' + urllib.quote(self.metric_name.encode('utf8'), ''))
 
     def get_entity(self):
         """make meta api request
@@ -359,7 +360,7 @@ class Instance(object):
         """
 
         return self._request('GET',
-                             'entities/' + urllib.quote(self.entity_name, ''))
+                             'entities/' + urllib.quote(self.entity_name.encode('utf8'), ''))
 
 
 class AtsdReader(object):
@@ -370,7 +371,6 @@ class AtsdReader(object):
     def __init__(self, entity, metric, tags, aggregator=None):
         #: :class:`.Node`
         self._instance = Instance(entity, metric, tags)
-        #: `Number` seconds, if 0 raw data
 
         #: :class:`.Aggregator` | `None`
         self.aggregator = aggregator
