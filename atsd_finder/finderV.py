@@ -74,7 +74,7 @@ class AtsdFinderV(object):
             info['valid'] = False
             return info
         
-        self.log('tokens = ' + json.dumps(tokens))
+        self.log('tokens = ' + unicode(tokens))
         
         info['tokens'] = len(tokens)
         
@@ -84,6 +84,7 @@ class AtsdFinderV(object):
         try:
             build = self.builds[tokens[0]]
         except:
+            info['valid'] = False
             return info
             
         info['build'] = tokens[0]
@@ -188,9 +189,6 @@ class AtsdFinderV(object):
                 yield BranchNode(path)
         
         else:
-        
-            if not 'build' in g_info or not g_info['build']:
-                raise StopIteration
 
             build = self.builds[g_info['build']]
                 
