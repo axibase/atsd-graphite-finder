@@ -7,6 +7,7 @@ import re
 import os
 
 from graphite.local_settings import ATSD_CONF
+from .utils import quote, metric_quote
 
 from .reader import AtsdReader, Aggregator
 try:
@@ -15,21 +16,6 @@ except:
     import default_logger as log
     
 from graphite.node import BranchNode, LeafNode
-
-  
-def quote(string):
-
-    return urllib.quote(string.encode('utf8'), safe='')
-    
-    
-def full_quote(string):
-
-    return urllib.quote(string.encode('utf8'), safe='').replace('.', '%2E')
-    
-    
-def unquote(string):
-
-    return urllib.unquote(string.encode('utf8'))
 
 
 class AtsdFinder(object):
@@ -102,7 +88,7 @@ class AtsdFinder(object):
             
         tokens = pattern.split('.')
         try:
-            tokens[:] = [unquote(token) for token in tokens] if pattern != '' else []
+            tokens[:] = [urllib.unquote(token) for token in tokens] if pattern != '' else []
         except:
             info['valid'] = False
             return info
@@ -163,22 +149,22 @@ class AtsdFinder(object):
             
                 info['tags'][tag_name] = tag_value
         
-        if not all_tags:
-        
-            i = i + 4
-            
-            self.log('detail token: ' + tokens[i])
-        
-            if tokens[i] == 'detail':
-                info['detail'] = True
-            else:
-                info['detail'] = False
-            
-            if info['tokens'] > i + 1:
-                info['aggregator'] = self.aggregators[tokens[i + 1]]
-            
-            if info['tokens'] > i + 2:
-                info['interval'] = self.intervals[self.interval_names.index(tokens[i + 2])]
+            if not all_tags:
+
+                i = i + 4
+
+                self.log('detail token: ' + tokens[i])
+
+                if tokens[i] == 'detail':
+                    info['detail'] = True
+                else:
+                    info['detail'] = False
+
+                if info['tokens'] > i + 1:
+                    info['aggregator'] = self.aggregators[tokens[i + 1]]
+
+                if info['tokens'] > i + 2:
+                    info['interval'] = self.intervals[self.interval_names.index(tokens[i + 2])]
         
         return info
 
@@ -206,14 +192,14 @@ class AtsdFinder(object):
                 
                 # self.log('path = ' + root)
 
-                yield BranchNode(full_quote(root))
+                yield BranchNode(metric_quote(root))
         
         elif info['tokens'] == 1:
 
             if info['type'] == 'entities':
                 for folder in self.entity_folders:
                     
-                    path = pattern + '.' + full_quote(folder)
+                    path = pattern + '.' + metric_quote(folder)
                     # self.log('path = ' + path)
 
                     yield BranchNode(path)
@@ -221,7 +207,7 @@ class AtsdFinder(object):
             elif info['type'] == 'metrics':
                 for folder in self.metric_folders:
 
-                    path = pattern + '.' + full_quote(folder)
+                    path = pattern + '.' + metric_quote(folder)
                     # self.log('path = ' + path)
 
                     yield BranchNode(path)
@@ -251,7 +237,7 @@ class AtsdFinder(object):
 
                 if not other:
                     
-                    path = pattern + '.' + full_quote(smth['name'])
+                    path = pattern + '.' + metric_quote(smth['name'])
                     # self.log('path = ' + path)
 
                     yield BranchNode(path)
@@ -278,7 +264,7 @@ class AtsdFinder(object):
 
                     if not matches:
                         
-                        path = pattern + '.' + full_quote(smth['name'])
+                        path = pattern + '.' + metric_quote(smth['name'])
                         # self.log('path = ' + path)
 
                         yield BranchNode(path)
@@ -297,7 +283,7 @@ class AtsdFinder(object):
 
                 for metric in response.json():
                     
-                    path = pattern + '.' + full_quote( metric['name'])
+                    path = pattern + '.' + metric_quote( metric['name'])
                     # self.log('path = ' + path)
 
                     yield BranchNode(path)
@@ -320,7 +306,7 @@ class AtsdFinder(object):
 
                 for entity in entities:
                     
-                    path = pattern + '.' + full_quote(entity)
+                    path = pattern + '.' + metric_quote(entity)
                     # self.log('path = ' + path)
                     
                     yield BranchNode(path)
@@ -385,7 +371,7 @@ class AtsdFinder(object):
                             
                                 labels.append(label)
                             
-                                path = pattern + '.' + full_quote(tag_name + ': ' + tag_combo[tag_name])
+                                path = pattern + '.' + metric_quote(tag_name + ': ' + tag_combo[tag_name])
                                 # self.log('path = ' + path)
                                 
                                 yield BranchNode(path)
@@ -394,14 +380,14 @@ class AtsdFinder(object):
                             
             if not found:
                 
-                path = pattern + '.' + full_quote('detail')
+                path = pattern + '.' + metric_quote('detail')
                 # self.log('path = ' + path)
                 
                 reader = AtsdReader(entity, metric, tags)
                 
                 yield LeafNode(path, reader)
                 
-                path = pattern + '.' + full_quote('stats')
+                path = pattern + '.' + metric_quote('stats')
                 # self.log('path = ' + path)
                 
                 yield BranchNode(path)
@@ -422,7 +408,7 @@ class AtsdFinder(object):
             
                 for aggregator in self.aggregators:
                     
-                    path = pattern + '.' + full_quote(aggregator)
+                    path = pattern + '.' + metric_quote(aggregator)
                     # self.log('path = ' + path)
                     
                     yield BranchNode(path)
@@ -436,7 +422,7 @@ class AtsdFinder(object):
             
             for interval_name in self.interval_names:
             
-                path = pattern + '.' + full_quote(interval_name)
+                path = pattern + '.' + metric_quote(interval_name)
                 # self.log('path = ' + path)
                 
                 interval = self.intervals[self.interval_names.index(interval_name)]
