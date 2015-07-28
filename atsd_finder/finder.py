@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import requests
 import urllib
 import json
@@ -12,7 +14,7 @@ try:
 except:
     import default_logger as log
     
-from .node import AtsdBranchNode, AtsdLeafNode
+from graphite.node import BranchNode, LeafNode
 
   
 def quote(string):
@@ -28,64 +30,6 @@ def full_quote(string):
 def unquote(string):
 
     return urllib.unquote(string.encode('utf8'))
-
-
-def get_info(pattern):
-
-    type_dict = {
-        'b': 'build',
-        'y': 'type',
-        'c': 'const',
-        'e': 'entity',
-        'm': 'metric',
-        'ef': 'entity folder',
-        'mf': 'metric folder',
-        'i': 'interval',
-        'd': 'detail',
-        'a': 'aggregator',
-        't': 'tag'
-    }
-
-    info = {
-        'valid': True,
-        'tags': {}
-    }
-        
-    tokens = pattern.split('.')
-    try:
-        tokens[:] = [json.loads(unquote(token)) for token in tokens] if pattern != '' else []
-    except:
-        info['valid'] = False
-        return info
-    
-    info['tokens'] = len(tokens)
-    
-    specific = ['tag', 'const']
-    
-    log.info('[AtsdInfo] ' + json.dumps(tokens))
-    
-    for token in tokens:
-        '''
-        token_type = token['type']
-        token_value = token['value']
-        '''
-        token_type = type_dict[token[0]]
-        token_value = token[1]
-        
-        if not token_type in specific:
-        
-            info[token_type] = token_value
-            
-        elif token_type == 'tag':
-        
-            tag_name = token_value.keys()[0]
-            tag_value = token_value[tag_name]
-        
-            info['tags'][tag_name] = tag_value
-            
-    log.info('[AtsdInfo] ' + json.dumps(info))
-    
-    return info
 
 
 class AtsdFinder(object):
@@ -142,69 +86,145 @@ class AtsdFinder(object):
                 'wavg'              : 'Weighted average',
                 'wtavg'             : 'Weighted time average',
             }
+            
+        self.aggregators = {v: k for k, v in self.aggregators.items()}
 
     def log(self, message):
     
         log.info('[' + self.__class__.__name__ + '] ' + message)
+    
+    def get_info(self, pattern):
+
+        info = {
+            'valid': True,
+            'tags': {}
+        }
+            
+        tokens = pattern.split('.')
+        try:
+            tokens[:] = [unquote(token) for token in tokens] if pattern != '' else []
+        except:
+            info['valid'] = False
+            return info
+        
+        self.log('tokens = ' + unicode(tokens))
+        
+        info['tokens'] = len(tokens)
+
+        if len(tokens) == 0:
+            return info
+        
+        if not tokens[0] in ['entities', 'metrics']:
+            info['valid'] = False
+            return info
+        
+        if not tokens[0] in ['entities', 'metrics']:
+            info['valid'] = False
+            return info
+            
+        info['type'] = tokens[0]
+        
+        if info['tokens'] > 1:
+            if info['type'] == 'entities':
+                info['entity folder'] = tokens[1]
+            else:
+                info['metric folder'] = tokens[1]
+        
+        if info['tokens'] > 2:
+            if info['type'] == 'entities':
+                info['entity'] = tokens[2]
+            else:
+                info['metric'] = tokens[2]
+        
+        if info['tokens'] > 3:
+            if info['type'] == 'entities':
+                info['metric'] = tokens[3]
+            else:
+                info['entity'] = tokens[3]
+        
+        all_tags = True
+        
+        if info['tokens'] > 4:
+        
+            for i, token in enumerate(tokens[4:]):
+            
+                if token in ['detail', 'stats']:
+                    all_tags = False
+                    break
+                
+                tag = token.split(': ', 1)
+                
+                if len(tag) != 2:
+                    info['valid'] = False
+                    return info
+                
+                tag_name = tag[0]
+                tag_value = tag[1]
+            
+                info['tags'][tag_name] = tag_value
+        
+        if not all_tags:
+        
+            i = i + 4
+            
+            self.log('detail token: ' + tokens[i])
+        
+            if tokens[i] == 'detail':
+                info['detail'] = True
+            else:
+                info['detail'] = False
+            
+            if info['tokens'] > i + 1:
+                info['aggregator'] = self.aggregators[tokens[i + 1]]
+            
+            if info['tokens'] > i + 2:
+                info['interval'] = self.intervals[self.interval_names.index(tokens[i + 2])]
+        
+        return info
 
     def find_nodes(self, query):
 
-        self.log('finding nodes: query = ' + unicode(query.pattern))
+        # self.log('finding nodes: query = ' + query.pattern)
+        
+        if len(query.pattern) != 0 and query.pattern[-1] != '*':
+            leaf_request = True
+        else:
+            leaf_request = False
         
         pattern = query.pattern[:-2] if query.pattern[-1] == '*' else query.pattern
         
-        info = get_info(pattern)
+        info = self.get_info(pattern)
+        self.log(json.dumps(info))
         
         if not info['valid']:
+            
             raise StopIteration
 
         if info['tokens'] == 0:
 
             for root in self.roots:
-                '''
-                cell = {'type': 'type',
-                        'value': root,
-                        'label': root}
-                '''
-                cell = ['y', root, root]
                 
                 # self.log('path = ' + root)
 
-                yield AtsdBranchNode(full_quote(json.dumps(cell)), root)
-                
-        elif 'type' not in info:
+                yield BranchNode(full_quote(root))
         
-            raise StopIteration
-
         elif info['tokens'] == 1:
 
             if info['type'] == 'entities':
                 for folder in self.entity_folders:
-                    '''
-                    cell = {'type': 'entity folder',
-                            'value': folder,
-                            'label': folder}
-                    '''
-                    cell = ['ef', folder, folder]
                     
-                    path = pattern + '.' + full_quote(json.dumps(cell))
+                    path = pattern + '.' + full_quote(folder)
                     # self.log('path = ' + path)
 
-                    yield AtsdBranchNode(path, folder)
+                    yield BranchNode(path)
 
             elif info['type'] == 'metrics':
                 for folder in self.metric_folders:
-                    '''
-                    cell = {'type': 'metric folder',
-                            'value': folder,
-                            'label': folder}
-                    '''
-                    cell = ['mf', folder, folder]
 
-                    path = pattern + '.' + full_quote(json.dumps(cell))
+                    path = pattern + '.' + full_quote(folder)
                     # self.log('path = ' + path)
 
-                    yield AtsdBranchNode(path, folder)
+                    yield BranchNode(path)
 
         elif info['tokens'] == 2:
         
@@ -220,7 +240,7 @@ class AtsdFinder(object):
                 other = False
                 url = self.url_base + '/' + quote(info['type']) + '?expression=name%20like%20%27' + quote(folder) + '*%27'
 
-            self.log('request_url = ' + unicode(url) + '')
+            self.log('request_url = ' + url + '')
 
             response = requests.get(url, auth=self.auth)
 
@@ -230,29 +250,11 @@ class AtsdFinder(object):
             for smth in response.json():
 
                 if not other:
-
-                    label = smth['name']
                     
-                    if info['type'] == 'entities':
-                        '''
-                        cell = {'type': 'entity',
-                                'value': label,
-                                'label': label}
-                        '''
-                        cell = ['e', label, label]
-                        
-                    else:
-                        '''
-                        cell = {'type': 'metric',
-                                'value': label,
-                                'label': label}
-                        '''
-                        cell = ['m', label, label]
-                    
-                    path = pattern + '.' + full_quote(json.dumps(cell))
+                    path = pattern + '.' + full_quote(smth['name'])
                     # self.log('path = ' + path)
 
-                    yield AtsdBranchNode(path, label)
+                    yield BranchNode(path)
 
                 else:
 
@@ -261,7 +263,7 @@ class AtsdFinder(object):
                     if info['type'] == 'entities':
                         for folder in self.entity_folders:
 
-                            if re.match(folder + '.*', unicode(smth['name'])):
+                            if re.match(folder + '.*', smth['name']):
 
                                     matches = True
                                     break
@@ -269,35 +271,17 @@ class AtsdFinder(object):
                     elif info['type'] == 'metrics':
                         for folder in self.metric_folders:
 
-                            if re.match(folder + '.*', unicode(smth['name'])):
+                            if re.match(folder + '.*', smth['name']):
 
                                     matches = True
                                     break
 
                     if not matches:
-
-                        label = smth['name']
                         
-                        if info['type'] == 'entities':
-                            '''
-                            cell = {'type': 'entity',
-                                    'value': label,
-                                    'label': label}
-                            '''
-                            cell = ['e', label, label]
-                            
-                        else:
-                            '''
-                            cell = {'type': 'metric',
-                                    'value': label,
-                                    'label': label}
-                            '''
-                            cell = ['m', label, label]
-                        
-                        path = pattern + '.' + full_quote(json.dumps(cell))
+                        path = pattern + '.' + full_quote(smth['name'])
                         # self.log('path = ' + path)
 
-                        yield AtsdBranchNode(path, label)
+                        yield BranchNode(path)
 
         elif info['tokens'] == 3:
 
@@ -312,19 +296,11 @@ class AtsdFinder(object):
                 self.log('status = ' + unicode(response.status_code))
 
                 for metric in response.json():
-
-                    label = metric['name']
-                    '''
-                    cell = {'type': 'metric',
-                            'value': label,
-                            'label': label}
-                    '''
-                    cell = ['m', label, label]
                     
-                    path = pattern + '.' + full_quote(json.dumps(cell))
+                    path = pattern + '.' + full_quote( metric['name'])
                     # self.log('path = ' + path)
 
-                    yield AtsdBranchNode(path, label)
+                    yield BranchNode(path)
 
             elif info['type'] == 'metrics':
 
@@ -343,17 +319,11 @@ class AtsdFinder(object):
                     entities.add(entity['entity'])
 
                 for entity in entities:
-                    '''
-                    cell = {'type': 'entity',
-                            'value': entity,
-                            'label': entity}
-                    '''
-                    cell = ['e', entity, entity]
                     
-                    path = pattern + '.' + full_quote(json.dumps(cell))
+                    path = pattern + '.' + full_quote(entity)
                     # self.log('path = ' + path)
                     
-                    yield AtsdBranchNode(path, entity)
+                    yield BranchNode(path)
 
         elif info['tokens'] > 3 and not 'detail' in info:
 
@@ -409,50 +379,32 @@ class AtsdFinder(object):
 
                             found = True
 
-                            label = unicode(tag_name + ': ' + tag_combo[tag_name])
-                            '''
-                            cell = {'type': 'tag',
-                                    'value': {tag_name: tag_combo[tag_name]},
-                                    'label': label}
-                            '''
-                            cell = ['t', {tag_name: tag_combo[tag_name]}, label]
+                            label = tag_name + ': ' + tag_combo[tag_name]
                             
                             if not label in labels:
                             
                                 labels.append(label)
                             
-                                path = pattern + '.' + full_quote(json.dumps(cell))
+                                path = pattern + '.' + full_quote(tag_name + ': ' + tag_combo[tag_name])
                                 # self.log('path = ' + path)
                                 
-                                yield AtsdBranchNode(path, label)
+                                yield BranchNode(path)
                                 
                             break
                             
             if not found:
-                '''
-                cell = {'type': 'detail',
-                        'value': True,
-                        'label': 'detail'}
-                '''
-                cell = ['d', True, 'detail']
                 
-                path = pattern + '.' + full_quote(json.dumps(cell))
+                path = pattern + '.' + full_quote('detail')
                 # self.log('path = ' + path)
                 
                 reader = AtsdReader(entity, metric, tags)
                 
-                yield AtsdLeafNode(path, u'detail', reader)
-                '''
-                cell = {'type': 'detail',
-                        'value': False,
-                        'label': 'stats'}
-                '''
-                cell = ['d', False, 'stats']
+                yield LeafNode(path, reader)
                 
-                path = pattern + '.' + full_quote(json.dumps(cell))
+                path = pattern + '.' + full_quote('stats')
                 # self.log('path = ' + path)
                 
-                yield AtsdBranchNode(path, u'stats')
+                yield BranchNode(path)
                 
         elif not 'aggregator' in info:
         
@@ -464,22 +416,16 @@ class AtsdFinder(object):
                 
                 reader = AtsdReader(entity, metric, tags)
                 
-                yield AtsdLeafNode(pattern, u'detail', reader)
+                yield LeafNode(pattern, reader)
             
             else:
             
                 for aggregator in self.aggregators:
-                    '''
-                    cell = {'type': 'aggregator',
-                            'value': aggregator,
-                            'label': aggregator}
-                    '''
-                    cell = ['a', aggregator, aggregator]
                     
-                    path = pattern + '.' + full_quote(json.dumps(cell))
+                    path = pattern + '.' + full_quote(aggregator)
                     # self.log('path = ' + path)
                     
-                    yield AtsdBranchNode(path, self.aggregators[aggregator])
+                    yield BranchNode(path)
             
         elif not 'interval' in info:
 
@@ -489,14 +435,8 @@ class AtsdFinder(object):
             aggregator = info['aggregator'].upper()
             
             for interval_name in self.interval_names:
-                '''
-                cell = {'type': 'interval',
-                        'value': interval_name,
-                        'label': interval_name}
-                '''
-                cell = ['i', interval_name, interval_name]
             
-                path = pattern + '.' + full_quote(json.dumps(cell))
+                path = pattern + '.' + full_quote(interval_name)
                 # self.log('path = ' + path)
                 
                 interval = self.intervals[self.interval_names.index(interval_name)]
@@ -507,16 +447,16 @@ class AtsdFinder(object):
                 else:
                     reader = AtsdReader(entity, metric, tags)
                 
-                yield AtsdLeafNode(path, interval_name, reader)
+                yield LeafNode(path, reader)
                 
         else:
         
             entity = info['entity']
             metric = info['metric']
             tags = info['tags']
+            
             aggregator = info['aggregator'].upper()
-        
-            interval = self.intervals[self.interval_names.index(info['interval'])]
+            interval = info['interval']
             self.log('aggregator = ' + aggregator + ', interval = ' + unicode(interval))
 
             if interval != 0:
@@ -524,4 +464,4 @@ class AtsdFinder(object):
             else:
                 reader = AtsdReader(entity, metric, tags)
             
-            yield AtsdLeafNode(pattern, interval, reader)
+            yield LeafNode(pattern, reader)
