@@ -180,6 +180,11 @@ class Aggregator(object):
             'interpolate': self.interpolate
         }
 
+    def __str__(self):
+        return '<Aggregator type={0}, interval={1} {2}>'.format(self.type,
+                                                                self.count,
+                                                                self.unit)
+
 
 class IntervalSchema(object):
     # _map: interval -> step in seconds
@@ -329,7 +334,7 @@ class Instance(object):
             ]
         }
 
-        if aggregator and not aggregator.type == 'DETAIL':
+        if aggregator and aggregator.type != 'DETAIL':
             # request regularized data
             if aggregator.type in NON_GROUP_STATS:
                 data['queries'][0]['group'] = {"type": "SUM",
@@ -371,6 +376,9 @@ class AtsdReader(object):
     def __init__(self, entity, metric, tags, aggregator=None):
         #: :class:`.Node`
         self._instance = Instance(entity, metric, tags)
+
+        if aggregator and aggregator.type == 'DETAIL':
+            aggregator = None
 
         #: :class:`.Aggregator` | `None`
         self.aggregator = aggregator
