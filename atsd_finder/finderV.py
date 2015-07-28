@@ -16,22 +16,7 @@ except:
     import default_logger as log
     
 from graphite.node import BranchNode, LeafNode
- 
-  
-def quote(string):
 
-    return urllib.quote(string.encode('utf8'), safe='*')
-    
-    
-def full_quote(string):
-
-    return urllib.quote(string.encode('utf8'), safe='').replace('.', '%2E')
-    
-    
-def unquote(string):
-
-    return urllib.unquote(string.encode('utf8'))
-    
 
 class AtsdFinderV(object):
 
@@ -55,6 +40,21 @@ class AtsdFinderV(object):
         except:
             self.builds = {}
             
+        self.url_codes = {symbol: urllib.quote(symbol, '') \
+                          for symbol in ' ,:?\'"()[]{}<>/\\|*'}
+        self.url_codes['.'] = '%2E'
+    
+    def quote(self, string):
+
+        return urllib.quote(string.encode('utf8'), '*')
+    
+    def metric_quote(self, string):
+    
+        for symbol in self.url_codes:
+            string = string.replace(symbol, self.url_codes[symbol])
+
+        return string
+            
     def log(self, message):
     
         log.info('[' + self.__class__.__name__ + ' ' + self.pid + '] ' + message)
@@ -69,7 +69,7 @@ class AtsdFinderV(object):
         tokens = pattern.split('.')
         
         try:
-            tokens[:] = [unquote(token) for token in tokens] if pattern != '' else []
+            tokens[:] = [urllib.unquote(token) for token in tokens] if pattern != '' else []
         except:
             info['valid'] = False
             return info
@@ -183,7 +183,7 @@ class AtsdFinderV(object):
         
             for build_name in self.builds:
 
-                path = full_quote(build_name)
+                path = self.metric_quote(build_name)
                 # self.log('path = ' + path)
             
                 yield BranchNode(path)
@@ -271,7 +271,7 @@ class AtsdFinderV(object):
                     
                         for string in token_value:
 
-                            path = pattern + '.' + full_quote(string)
+                            path = pattern + '.' + self.metric_quote(string)
                         
                             if not is_leaf:
                             
@@ -306,7 +306,7 @@ class AtsdFinderV(object):
                             if token_type not in info \
                                or token_type in info and fnmatch.fnmatch(folder, info[token_type]):
 
-                                path = pattern + '.' + full_quote(folder_dict[folder])
+                                path = pattern + '.' + self.metric_quote(folder_dict[folder])
 
                                 if not is_leaf:
                                 
@@ -356,7 +356,7 @@ class AtsdFinderV(object):
                             
                         if not is_leaf and not 'metric' in info:
                         
-                            expressions = ['name%20like%20%27' + quote(folder) + '%27' for folder in folders]
+                            expressions = ['name%20like%20%27' + self.quote(folder) + '%27' for folder in folders]
                             tail = '?expression=' + '%20or%20'.join(expressions)
                         
                             url = self.url_base + '/entities' + tail
@@ -367,14 +367,14 @@ class AtsdFinderV(object):
                             
                             for entity in response.json():
 
-                                path = pattern + '.' + full_quote(entity['name'])
+                                path = pattern + '.' + self.metric_quote(entity['name'])
                                 # self.log('path = ' + path)
 
                                 yield BranchNode(path)
                                 
                         elif 'metric' in info:
                         
-                            url = self.url_base + '/metrics/' + quote(info['metric'])+ '/entity-and-tags'
+                            url = self.url_base + '/metrics/' + self.quote(info['metric'])+ '/entity-and-tags'
                             self.log('request_url = ' + url)
 
                             response = requests.get(url, auth=self.auth)
@@ -398,7 +398,7 @@ class AtsdFinderV(object):
                                 if not matches:
                                     continue
 
-                                path = pattern + '.' + full_quote(entity)
+                                path = pattern + '.' + self.metric_quote(entity)
                                 # self.log('path = ' + path)
                                 
                                 if not is_leaf:
@@ -442,13 +442,13 @@ class AtsdFinderV(object):
                         if '*' in folders:
                             folders = ['*']
                             
-                        expressions = ['name%20like%20%27' + quote(folder) + '%27' for folder in folders]
+                        expressions = ['name%20like%20%27' + self.quote(folder) + '%27' for folder in folders]
                         tail = '?expression=' + '%20or%20'.join(expressions)
                             
                         if not 'entity' in info:
                             url = self.url_base + '/metrics'
                         else:
-                            url = self.url_base + '/entities/' + quote(info['entity'])+ '/metrics'
+                            url = self.url_base + '/entities/' + self.quote(info['entity'])+ '/metrics'
                             
                         url = url + tail
                         self.log('request_url = ' + url)
@@ -458,7 +458,7 @@ class AtsdFinderV(object):
                         
                         for metric in response.json():
 
-                            path = pattern + '.' + full_quote(metric['name'])
+                            path = pattern + '.' + self.metric_quote(metric['name'])
                             # self.log('path = ' + path)
                             
                             if not is_leaf:
@@ -484,7 +484,7 @@ class AtsdFinderV(object):
                     
                         if 'metric' in info:
                     
-                            url = self.url_base + '/metrics/' + quote(info['metric'])+ '/entity-and-tags'
+                            url = self.url_base + '/metrics/' + self.quote(info['metric'])+ '/entity-and-tags'
                             self.log('request_url = ' + url)
 
                             response = requests.get(url, auth=self.auth)
@@ -527,7 +527,7 @@ class AtsdFinderV(object):
                                     
                                     tag_combos.append(tag_combo)
 
-                                    path = pattern + '.' + full_quote(', '.join(tag_values))
+                                    path = pattern + '.' + self.metric_quote(', '.join(tag_values))
                                     # self.log('path = ' + path)
                                 
                                     if not is_leaf:
@@ -558,7 +558,7 @@ class AtsdFinderV(object):
                         
                             aggregator = aggregator_dict.keys()[0]
 
-                            path = pattern + '.' + full_quote(aggregator_dict[aggregator])
+                            path = pattern + '.' + self.metric_quote(aggregator_dict[aggregator])
                             # self.log('path = ' + path)
                             
                             if not is_leaf:
@@ -588,7 +588,7 @@ class AtsdFinderV(object):
                             interval_unit = interval_dict['unit']
                             interval_label = interval_dict['label']
 
-                            path = pattern + '.' + full_quote(interval_label)
+                            path = pattern + '.' + self.metric_quote(interval_label)
                             # self.log('path = ' + path)
 
                             if not is_leaf:
