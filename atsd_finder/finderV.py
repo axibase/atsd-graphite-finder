@@ -15,7 +15,7 @@ try:
 except:
     import default_logger as log
     
-from .node import AtsdBranchNode, AtsdLeafNode
+from graphite.node import BranchNode, LeafNode
  
   
 def quote(string):
@@ -185,7 +185,7 @@ class AtsdFinderV(object):
                 path = full_quote(build_name)
                 # self.log('path = ' + path)
             
-                yield AtsdBranchNode(path, build_name)
+                yield BranchNode(path)
         
         else:
         
@@ -279,7 +279,7 @@ class AtsdFinderV(object):
                             
                                 # self.log('path = ' + path)
 
-                                yield AtsdBranchNode(path, string)
+                                yield BranchNode(path)
                             
                             elif 'metric' in info:
                             
@@ -297,25 +297,24 @@ class AtsdFinderV(object):
                                     aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
                                     reader = AtsdReader(entity, metric, tags, Aggregator(aggregator, interval_count, interval_unit))
                                     
-                                yield AtsdLeafNode(path, string, reader)
+                                yield LeafNode(path, reader)
                             
                     elif token_type in ['entity folder', 'metric folder']:
                         
                         for folder_dict in token_value:
                         
                             folder = folder_dict.keys()[0]
-                            folder_label = folder_dict[folder]
                         
                             if token_type not in info \
                                or token_type in info and fnmatch.fnmatch(folder, info[token_type]):
 
-                                path = pattern + '.' + full_quote(folder_label)
+                                path = pattern + '.' + full_quote(folder_dict[folder])
 
                                 if not is_leaf:
                                 
                                     # self.log('path = ' + path)
                                     
-                                    yield AtsdBranchNode(path, folder_label)
+                                    yield BranchNode(path)
                                     
                                 elif 'metric' in info:
                                     
@@ -333,7 +332,7 @@ class AtsdFinderV(object):
                                         aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
                                         reader = AtsdReader(entity, metric, tags, Aggregator(aggregator, interval_count, interval_unit))
                         
-                                    yield AtsdLeafNode(path, folder_label, reader)
+                                    yield LeafNode(path, reader)
                     
                     elif token_type == 'entity':
 
@@ -370,12 +369,10 @@ class AtsdFinderV(object):
                             
                             for entity in response.json():
 
-                                label = entity['name']
-
-                                path = pattern + '.' + full_quote(label)
+                                path = pattern + '.' + full_quote(entity['name'])
                                 # self.log('path = ' + path)
 
-                                yield AtsdBranchNode(path, label)
+                                yield BranchNode(path)
                                 
                         elif 'metric' in info:
                         
@@ -408,7 +405,7 @@ class AtsdFinderV(object):
                                 
                                 if not is_leaf:
                                 
-                                    yield AtsdBranchNode(path, entity)
+                                    yield BranchNode(path)
                                     
                                 else:
                                 
@@ -423,7 +420,7 @@ class AtsdFinderV(object):
                                         aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
                                         reader = AtsdReader(entity['name'], metric, tags, Aggregator(aggregator, interval_count, interval_unit))
                         
-                                    yield AtsdLeafNode(path, entity, reader)
+                                    yield LeafNode(path, reader)
                                 
                     elif token_type == 'metric':
 
@@ -463,14 +460,12 @@ class AtsdFinderV(object):
                         
                         for metric in response.json():
 
-                            label = metric['name']
-
-                            path = pattern + '.' + full_quote(label)
+                            path = pattern + '.' + full_quote(metric['name'])
                             # self.log('path = ' + path)
                             
                             if not is_leaf:
 
-                                yield AtsdBranchNode(path, label)
+                                yield BranchNode(path)
                                 
                             else:
                             
@@ -485,7 +480,7 @@ class AtsdFinderV(object):
                                     aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
                                     reader = AtsdReader(entity, metric['name'], tags, Aggregator(aggregator, interval_count, interval_unit))
                                 
-                                yield AtsdLeafNode(path, label, reader)
+                                yield LeafNode(path, reader)
                                 
                     elif token_type == 'tag':
                     
@@ -533,15 +528,13 @@ class AtsdFinderV(object):
                                 if matches and not tag_combo in tag_combos:
                                     
                                     tag_combos.append(tag_combo)
-                                
-                                    label = ', '.join(tag_values)
 
-                                    path = pattern + '.' + full_quote(label)
+                                    path = pattern + '.' + full_quote(', '.join(tag_values))
                                     # self.log('path = ' + path)
                                 
                                     if not is_leaf:
                                     
-                                        yield AtsdBranchNode(path, label)
+                                        yield BranchNode(path)
                                     
                                     else:
                                     
@@ -559,21 +552,20 @@ class AtsdFinderV(object):
                                             aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
                                             reader = AtsdReader(entity, metric, tags, Aggregator(aggregator, interval_count, interval_unit))
                                             
-                                        yield AtsdLeafNode(path, label, reader)
+                                        yield LeafNode(path, reader)
                             
                     elif token_type == 'aggregator':
                     
                         for aggregator_dict in token_value:
                         
                             aggregator = aggregator_dict.keys()[0]
-                            aggregator_label = aggregator_dict[aggregator]
 
-                            path = pattern + '.' + full_quote(aggregator_label)
+                            path = pattern + '.' + full_quote(aggregator_dict[aggregator])
                             # self.log('path = ' + path)
                             
                             if not is_leaf:
 
-                                yield AtsdBranchNode(path, aggregator_label)
+                                yield BranchNode(path)
                                 
                             elif 'metric' in info:
                             
@@ -588,7 +580,7 @@ class AtsdFinderV(object):
                                     interval_unit = info['interval']['unit']
                                     reader = AtsdReader(entity, metric, tags, Aggregator(aggregator, interval_count, interval_unit))
                                 
-                                yield AtsdLeafNode(path, aggregator_label, reader)
+                                yield LeafNode(path, reader)
                             
                     elif token_type == 'interval':
                     
@@ -603,7 +595,7 @@ class AtsdFinderV(object):
 
                             if not is_leaf:
 
-                                yield AtsdBranchNode(path, interval_label)
+                                yield BranchNode(path)
                                 
                             elif 'metric' in info:
                             
@@ -617,7 +609,7 @@ class AtsdFinderV(object):
                                     aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
                                     reader = AtsdReader(entity, metric, tags, Aggregator(aggregator, interval_count, interval_unit))
                                 
-                                yield AtsdLeafNode(path, interval_label, reader)
+                                yield LeafNode(path, reader)
                 
             elif leaf_request:
             
@@ -636,4 +628,4 @@ class AtsdFinderV(object):
                         reader = AtsdReader(entity, metric, tags,
                                             Aggregator(aggregator, interval_count, interval_unit))
                 
-                    yield AtsdLeafNode(pattern, '', reader)
+                    yield LeafNode(pattern, reader)
