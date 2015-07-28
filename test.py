@@ -4,7 +4,7 @@ import atsd_finder
 from atsd_finder.reader import Aggregator
 
 
-class TestAtsdFinder(unittest.TestCase):
+class TestReaderFetch(unittest.TestCase):
     def test_interval_schema(self):
         now = time.time()
         reader = atsd_finder.AtsdReader('nurswgvml006',
@@ -89,6 +89,33 @@ class TestAtsdFinder(unittest.TestCase):
                                         {'host': 'NURSWGVML007'},
                                         Aggregator('AVG', 1, 'SECOND'))
         reader.get_intervals()
+
+
+class TestReader(unittest.TestCase):
+
+    def test_aggregator(self):
+        aggregator = Aggregator('AVG', 1, 'DAY')
+        serialized = aggregator.json()
+
+        self.assertEqual('AVG', serialized['type'])
+
+    def test_aggregator_zero_interval(self):
+        with self.assertRaises(ValueError):
+            Aggregator('AVG', 0, 'SECOND')
+
+    def test_reader_interval_schema(self):
+        schema = atsd_finder.reader.IntervalSchema('cpu_busy')
+
+        aggregator = schema.aggregator(60 * 60)
+        self.assertIsNone(aggregator)
+
+        # aggregator = schema.aggregator(60 * 60 * 24 * 20 + 1)
+        # self.assertIsInstance(aggregator, Aggregator)
+        # self.assertEqual(aggregator.count, 1)
+        # self.assertEqual(aggregator.unit, 'DAY')
+
+
+class TestFinder(unittest.TestCase):
 
     def test_finder(self):
         atsd_finder.AtsdFinder()
