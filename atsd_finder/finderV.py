@@ -80,13 +80,13 @@ class AtsdFinderV(object):
         
         if len(tokens) == 0:
             return info
-
-        info['build'] = tokens[0]
         
         try:
-            build = self.builds[info['build']]
+            build = self.builds[tokens[0]]
         except:
             return info
+            
+        info['build'] = tokens[0]
         
         specific = ['tag', 'const']
         
@@ -189,7 +189,7 @@ class AtsdFinderV(object):
         
         else:
         
-            if 'build' not in g_info or not g_info['build']:
+            if not 'build' in g_info or not g_info['build']:
                 raise StopIteration
 
             build = self.builds[g_info['build']]
