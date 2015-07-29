@@ -148,12 +148,12 @@ class AtsdFinderV(object):
                     tag_value = tag_values[j]
                     info['tags'][tag_name] = tag_value
             
-            elif token_type == 'period':
+            elif token_type in ['period', 'interval']:
             
-                for period_dict in token_desc:
-                    if token == period_dict['label']:
+                for time_dict in token_desc:
+                    if token == time_dict['label']:
                     
-                        info[token_type] = period_dict
+                        info[token_type] = time_dict
                         break
         
         return info
@@ -285,14 +285,16 @@ class AtsdFinderV(object):
                                 entity = info['entity'] if 'entity' in info else '*'
                                 metric = info['metric']
                                 tags = info['tags']
+                                interval = info['interval'] if 'interval' in info else None
                                     
                                 if not 'period' in info or info['period']['count'] == 0:
-                                    reader = AtsdReader(entity, metric, tags)
+                                    reader = AtsdReader(entity, metric, tags, interval)
                                 else:
                                     period_count = info['period']['count']
                                     period_unit = info['period']['unit']
                                     aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
-                                    reader = AtsdReader(entity, metric, tags, Aggregator(aggregator, period_count, period_unit))
+                                    reader = AtsdReader(entity, metric, tags, interval,
+                                                        Aggregator(aggregator, period_count, period_unit))
                                     
                                 yield LeafNode(path, reader)
                             
@@ -320,14 +322,16 @@ class AtsdFinderV(object):
                                     entity = info['entity'] if 'entity' in info else '*'
                                     metric = info['metric']
                                     tags = info['tags']
+                                    interval = info['interval'] if 'interval' in info else None
                                         
                                     if not 'period' in info or info['period']['count'] == 0:
-                                        reader = AtsdReader(entity, metric, tags)
+                                        reader = AtsdReader(entity, metric, tags, interval)
                                     else:
                                         period_count = info['period']['count']
                                         period_unit = info['period']['unit']
                                         aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
-                                        reader = AtsdReader(entity, metric, tags, Aggregator(aggregator, period_count, period_unit))
+                                        reader = AtsdReader(entity, metric, tags, interval,
+                                                            Aggregator(aggregator, period_count, period_unit))
                         
                                     yield LeafNode(path, reader)
                     
@@ -408,14 +412,16 @@ class AtsdFinderV(object):
                                 
                                     metric = info['metric']
                                     tags = info['tags']
+                                    interval = info['interval'] if 'interval' in info else None
                                         
                                     if not 'period' in info or info['period']['count'] == 0:
-                                        reader = AtsdReader(entity['name'], metric, tags)
+                                        reader = AtsdReader(entity['name'], metric, tags, interval)
                                     else:
                                         period_count = info['period']['count']
                                         period_unit = info['period']['unit']
                                         aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
-                                        reader = AtsdReader(entity['name'], metric, tags, Aggregator(aggregator, period_count, period_unit))
+                                        reader = AtsdReader(entity['name'], metric, tags, interval,
+                                                            Aggregator(aggregator, period_count, period_unit))
                         
                                     yield LeafNode(path, reader)
                                 
@@ -468,14 +474,16 @@ class AtsdFinderV(object):
                             
                                 entity = info['entity'] if 'entity' in info else '*'
                                 tags = info['tags']
+                                interval = info['interval'] if 'interval' in info else None
                                 
                                 if not 'period' in info or info['period']['count'] == 0:
-                                    reader = AtsdReader(entity, metric['name'], tags)
+                                    reader = AtsdReader(entity, metric['name'], tags, interval)
                                 else:
                                     period_count = info['period']['count']
                                     period_unit = info['period']['unit']
                                     aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
-                                    reader = AtsdReader(entity, metric['name'], tags, Aggregator(aggregator, period_count, period_unit))
+                                    reader = AtsdReader(entity, metric['name'], tags, interval,
+                                                        Aggregator(aggregator, period_count, period_unit))
                                 
                                 yield LeafNode(path, reader)
                                 
@@ -540,14 +548,16 @@ class AtsdFinderV(object):
                                     
                                         entity = info['entity'] if 'entity' in info else '*'
                                         metric = info['metric']
+                                        interval = info['interval'] if 'interval' in info else None
                                         
                                         if not 'period' in info or info['period']['count'] == 0:
-                                            reader = AtsdReader(entity, metric, tags)
+                                            reader = AtsdReader(entity, metric, tags, interval)
                                         else:
                                             period_count = info['period']['count']
                                             period_unit = info['period']['unit']
                                             aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
-                                            reader = AtsdReader(entity, metric, tags, Aggregator(aggregator, period_count, period_unit))
+                                            reader = AtsdReader(entity, metric, tags, interval,
+                                                                Aggregator(aggregator, period_count, period_unit))
                                             
                                         yield LeafNode(path, reader)
                             
@@ -569,23 +579,25 @@ class AtsdFinderV(object):
                                 entity = info['entity'] if 'entity' in info else '*'
                                 metric = info['metric']
                                 tags = info['tags']
+                                interval = info['interval'] if 'interval' in info else None
                                     
                                 if not 'period' in info or info['period']['count'] == 0:
-                                    reader = AtsdReader(entity, metric, tags)
+                                    reader = AtsdReader(entity, metric, tags, interval)
                                 else:
                                     period_count = info['period']['count']
                                     period_unit = info['period']['unit']
-                                    reader = AtsdReader(entity, metric, tags, Aggregator(aggregator, period_count, period_unit))
+                                    reader = AtsdReader(entity, metric, tags, interval,
+                                                        Aggregator(aggregator, period_count, period_unit))
                                 
                                 yield LeafNode(path, reader)
                             
                     elif token_type == 'period':
                     
-                        for period_dict in token_value:
+                        for period in token_value:
                         
-                            period_count = period_dict['count']
-                            period_unit = period_dict['unit']
-                            period_label = period_dict['label']
+                            period_count = period['count']
+                            period_unit = period['unit']
+                            period_label = period['label']
 
                             path = pattern + '.' + metric_quote(prefix + period_label)
                             # self.log('path = ' + path)
@@ -599,12 +611,44 @@ class AtsdFinderV(object):
                                 entity = info['entity'] if 'entity' in info else '*'
                                 metric = info['metric']
                                 tags = info['tags']
+                                interval = info['interval'] if 'interval' in info else None
                                     
                                 if period_count == 0:
-                                    reader = AtsdReader(entity, metric, tags)
+                                    reader = AtsdReader(entity, metric, tags, interval)
                                 else:
                                     aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
-                                    reader = AtsdReader(entity, metric, tags, Aggregator(aggregator, period_count, period_unit))
+                                    reader = AtsdReader(entity, metric, tags, interval,
+                                                        Aggregator(aggregator, period_count, period_unit))
+                                
+                                yield LeafNode(path, reader)
+                                
+                    elif token_type == 'interval':
+                    
+                        for interval in token_value:
+                        
+                            interval_label = interval['label']
+
+                            path = pattern + '.' + metric_quote(prefix + interval_label)
+                            # self.log('path = ' + path)
+
+                            if not is_leaf:
+
+                                yield BranchNode(path)
+                                
+                            elif 'metric' in info:
+                            
+                                entity = info['entity'] if 'entity' in info else '*'
+                                metric = info['metric']
+                                tags = info['tags']
+                                    
+                                if not 'period' in info or info['period']['count'] == 0:
+                                    reader = AtsdReader(entity, metric, tags, interval)
+                                else:
+                                    period_count = info['period']['count']
+                                    period_unit = info['period']['unit']
+                                    aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
+                                    reader = AtsdReader(entity, metric, tags, interval,
+                                                        Aggregator(aggregator, period_count, period_unit))
                                 
                                 yield LeafNode(path, reader)
                 
@@ -615,14 +659,15 @@ class AtsdFinderV(object):
                     entity = g_info['entity'] if 'entity' in g_info else '*'
                     metric = g_info['metric']
                     tags = g_info['tags']
+                    interval = g_info['interval'] if 'interval' in g_info else None
                         
                     if not 'period' in g_info or g_info['period']['count'] == 0:
-                        reader = AtsdReader(entity, metric, tags)
+                        reader = AtsdReader(entity, metric, tags, interval)
                     else:
                         period_count = g_info['period']['count']
                         period_unit = g_info['period']['unit']
                         aggregator = g_info['aggregator'].upper() if 'aggregator' in g_info else 'AVG'
-                        reader = AtsdReader(entity, metric, tags,
+                        reader = AtsdReader(entity, metric, tags, interval,
                                             Aggregator(aggregator, period_count, period_unit))
                 
                     yield LeafNode(pattern, reader)
