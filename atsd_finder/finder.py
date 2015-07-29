@@ -21,8 +21,8 @@ from graphite.node import BranchNode, LeafNode
 class AtsdFinder(object):
 
     roots = {'entities', 'metrics'}
-    intervals = [1, 60, 3600, 86400]
-    interval_names = ['1 sec', '1 min', '1 hour', '1 day']
+    periods = [1, 60, 3600, 86400]
+    period_names = ['1 sec', '1 min', '1 hour', '1 day']
 
     def __init__(self):
     
@@ -164,7 +164,7 @@ class AtsdFinder(object):
                     info['aggregator'] = self.aggregators[tokens[i + 1]]
 
                 if info['tokens'] > i + 2:
-                    info['interval'] = self.intervals[self.interval_names.index(tokens[i + 2])]
+                    info['period'] = self.periods[self.period_names.index(tokens[i + 2])]
         
         return info
 
@@ -413,23 +413,23 @@ class AtsdFinder(object):
                     
                     yield BranchNode(path)
             
-        elif not 'interval' in info:
+        elif not 'period' in info:
 
             entity = info['entity']
             metric = info['metric']
             tags = info['tags']
             aggregator = info['aggregator'].upper()
             
-            for interval_name in self.interval_names:
+            for period_name in self.period_names:
             
-                path = pattern + '.' + metric_quote(interval_name)
+                path = pattern + '.' + metric_quote(period_name)
                 # self.log('path = ' + path)
                 
-                interval = self.intervals[self.interval_names.index(interval_name)]
-                self.log('aggregator = ' + aggregator + ', interval = ' + unicode(interval))
+                period = self.periods[self.period_names.index(period_name)]
+                self.log('aggregator = ' + aggregator + ', period = ' + unicode(period))
 
-                if interval != 0:
-                    reader = AtsdReader(entity, metric, tags, Aggregator(aggregator, interval))
+                if period != 0:
+                    reader = AtsdReader(entity, metric, tags, Aggregator(aggregator, period))
                 else:
                     reader = AtsdReader(entity, metric, tags)
                 
@@ -442,11 +442,11 @@ class AtsdFinder(object):
             tags = info['tags']
             
             aggregator = info['aggregator'].upper()
-            interval = info['interval']
-            self.log('aggregator = ' + aggregator + ', interval = ' + unicode(interval))
+            period = info['period']
+            self.log('aggregator = ' + aggregator + ', period = ' + unicode(period))
 
-            if interval != 0:
-                reader = AtsdReader(entity, metric, tags, Aggregator(aggregator, interval))
+            if period != 0:
+                reader = AtsdReader(entity, metric, tags, Aggregator(aggregator, period))
             else:
                 reader = AtsdReader(entity, metric, tags)
             
