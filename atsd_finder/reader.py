@@ -54,7 +54,7 @@ def _median_delta(values):
 
 
 def _regularize(series):
-    """create values with equal intervals
+    """create values with equal periods
 
     :param series: should contains at least one value
     :return: time_info, values
@@ -181,9 +181,9 @@ class Aggregator(object):
         }
 
     def __str__(self):
-        return '<Aggregator type={0}, interval={1} {2}>'.format(self.type,
-                                                                self.count,
-                                                                self.unit)
+        return '<Aggregator type={0}, period={1} {2}>'.format(self.type,
+                                                              self.count,
+                                                              self.unit)
 
 
 class IntervalSchema(object):
@@ -373,7 +373,7 @@ class AtsdReader(object):
                  'aggregator',
                  '_interval_schema')
 
-    def __init__(self, entity, metric, tags, aggregator=None):
+    def __init__(self, entity, metric, tags, interval=None, aggregator=None):
         #: :class:`.Node`
         self._instance = Instance(entity, metric, tags)
 
