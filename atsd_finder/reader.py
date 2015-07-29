@@ -6,7 +6,6 @@ import ConfigParser
 import fnmatch
 import re
 import os
-import time
 
 from graphite.intervals import Interval, IntervalSet
 
@@ -389,12 +388,10 @@ class AtsdReader(object):
         #: :class:`.IntervalSchema`
         self._interval_schema = IntervalSchema(metric)
 
-        default_interval['unit'] = default_interval['unit'].upper()
+        if default_interval:
+            default_interval['unit'] = default_interval['unit'].upper()
         #: {unit: `str`, count: `Number`} | None
         self.default_interval = default_interval
-
-        #: last fetch end_time
-        self._last_fetch = None
 
         log.info('[AtsdReader] init: entity=' + unicode(entity)
                  + ' metric=' + unicode(metric)
@@ -410,8 +407,7 @@ class AtsdReader(object):
         """
 
         if self.default_interval:
-            start_time, end_time = self._apply_default_interval(start_time,
-                                                                end_time)
+            start_time, end_time = self._apply_default_interval(end_time)
 
         log.info(
             '[AtsdReader] fetching:  start_time={:f} end_time= {:f}'
@@ -470,7 +466,7 @@ class AtsdReader(object):
 
         return IntervalSet([Interval(start_time, end_time)])
 
-    def _apply_default_interval(self, start_time, end_time):
+    def _apply_default_interval(self, end_time):
 
         if self.default_interval['unit'] == 'MILLISECOND':
             seconds = self.default_interval['count'] / 1000.0
@@ -493,7 +489,4 @@ class AtsdReader(object):
         else:
             raise ValueError('wrong interval unit')
 
-        if not self._last_fetch or abs(end_time - time.time()) < 2:
-            return end_time - seconds, end_time
-        else:
-            return start_time, end_time
+        return end_time - seconds, end_time
