@@ -102,13 +102,24 @@ class AtsdFinderV(object):
             token_type = level['type']
             token_desc = level['value']
             
+            if len(token) == 0:
+                continue
+            
+            if token[0] == '[' and ']' in  token:
+                prefix = token[token.find('[')+1:token.find(']')]
+                token = token[token.find(']')+2:]
+            else:
+                prefix = ''
+            
             if token_type == 'collection':
             
                 for desc in level['value']:
                 
                     is_leaf = desc['is leaf'] if 'is leaf' in desc else False
+                    desc_prefix = desc['prefix'] if 'prefix' in  desc else ''
                     
-                    if is_leaf == leaf_request or i != info['tokens'] - 1:
+                    if (is_leaf == leaf_request or i != info['tokens'] - 1) \
+                       and prefix == desc_prefix:
                     
                         token_type = desc['type']
                         token_desc = desc['value']
@@ -253,11 +264,13 @@ class AtsdFinderV(object):
                     token_value = token['value']
                     is_leaf = token['is leaf'] if 'is leaf' in token else False
                     
+                    prefix = '[' + token['prefix'] + '] ' if 'prefix' in token else ''
+                    
                     if token_type == 'const':
                     
                         for string in token_value:
 
-                            path = pattern + '.' + metric_quote(string)
+                            path = pattern + '.' + metric_quote(prefix + string)
                         
                             if not is_leaf:
                             
@@ -292,7 +305,7 @@ class AtsdFinderV(object):
                             if token_type not in info \
                                or token_type in info and fnmatch.fnmatch(folder, info[token_type]):
 
-                                path = pattern + '.' + metric_quote(folder_dict[folder])
+                                path = pattern + '.' + metric_quote(prefix + folder_dict[folder])
 
                                 if not is_leaf:
                                 
@@ -353,7 +366,7 @@ class AtsdFinderV(object):
                             
                             for entity in response.json():
 
-                                path = pattern + '.' + metric_quote(entity['name'])
+                                path = pattern + '.' + metric_quote(prefix + entity['name'])
                                 # self.log('path = ' + path)
 
                                 yield BranchNode(path)
@@ -384,7 +397,7 @@ class AtsdFinderV(object):
                                 if not matches:
                                     continue
 
-                                path = pattern + '.' + metric_quote(entity)
+                                path = pattern + '.' + metric_quote(prefix + entity)
                                 # self.log('path = ' + path)
                                 
                                 if not is_leaf:
@@ -444,7 +457,7 @@ class AtsdFinderV(object):
                         
                         for metric in response.json():
 
-                            path = pattern + '.' + metric_quote(metric['name'])
+                            path = pattern + '.' + metric_quote(prefix + metric['name'])
                             # self.log('path = ' + path)
                             
                             if not is_leaf:
@@ -513,7 +526,7 @@ class AtsdFinderV(object):
                                     
                                     tag_combos.append(tag_combo)
 
-                                    path = pattern + '.' + metric_quote(', '.join(tag_values))
+                                    path = pattern + '.' + metric_quote(prefix + ', '.join(tag_values))
                                     # self.log('path = ' + path)
                                 
                                     if not is_leaf:
@@ -544,7 +557,7 @@ class AtsdFinderV(object):
                         
                             aggregator = aggregator_dict.keys()[0]
 
-                            path = pattern + '.' + metric_quote(aggregator_dict[aggregator])
+                            path = pattern + '.' + metric_quote(prefix + aggregator_dict[aggregator])
                             # self.log('path = ' + path)
                             
                             if not is_leaf:
@@ -574,7 +587,7 @@ class AtsdFinderV(object):
                             interval_unit = interval_dict['unit']
                             interval_label = interval_dict['label']
 
-                            path = pattern + '.' + metric_quote(interval_label)
+                            path = pattern + '.' + metric_quote(prefix + interval_label)
                             # self.log('path = ' + path)
 
                             if not is_leaf:
