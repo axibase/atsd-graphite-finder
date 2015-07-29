@@ -6,6 +6,7 @@ import ConfigParser
 import fnmatch
 import re
 import os
+import time
 
 from graphite.intervals import Interval, IntervalSet
 
@@ -371,20 +372,29 @@ class Instance(object):
 class AtsdReader(object):
     __slots__ = ('_instance',
                  'aggregator',
-                 '_interval_schema')
+                 '_interval_schema',
+                 'default_interval',
+                 '_last_fetch')
 
-    def __init__(self, entity, metric, tags, interval=None, aggregator=None):
-        #: :class:`.Node`
+    def __init__(self, entity, metric, tags, default_interval=None, aggregator=None):
+        #: :class: `.Node`
         self._instance = Instance(entity, metric, tags)
 
         if aggregator and aggregator.type == 'DETAIL':
             aggregator = None
 
-        #: :class:`.Aggregator` | `None`
+        #: :class: `.Aggregator` | `None`
         self.aggregator = aggregator
 
         #: :class:`.IntervalSchema`
         self._interval_schema = IntervalSchema(metric)
+
+        default_interval['unit'] = default_interval['unit'].upper()
+        #: {unit: `str`, count: `Number`} | None
+        self.default_interval = default_interval
+
+        #: last fetch end_time
+        self._last_fetch = None
 
         log.info('[AtsdReader] init: entity=' + unicode(entity)
                  + ' metric=' + unicode(metric)
@@ -398,6 +408,10 @@ class AtsdReader(object):
         :param start_time: `Number` seconds
         :param end_time: `Number` seconds
         """
+
+        if self.default_interval:
+            start_time, end_time = self._apply_default_interval(start_time,
+                                                                end_time)
 
         log.info(
             '[AtsdReader] fetching:  start_time={:f} end_time= {:f}'
@@ -433,6 +447,7 @@ class AtsdReader(object):
         log.info('[AtsdReader] fetched {:d} values, step={:f}'
                  .format(len(values), time_info[2]))
 
+        self._last_fetch = end_time
         return time_info, values
 
     def get_intervals(self):
@@ -454,3 +469,31 @@ class AtsdReader(object):
         start_time = (end_time - retention) if retention else 1
 
         return IntervalSet([Interval(start_time, end_time)])
+
+    def _apply_default_interval(self, start_time, end_time):
+
+        if self.default_interval['unit'] == 'MILLISECOND':
+            seconds = self.default_interval['count'] / 1000.0
+        elif self.default_interval['unit'] == 'SECOND':
+            seconds = self.default_interval['count']
+        elif self.default_interval['unit'] == 'MINUTE':
+            seconds = self.default_interval['count'] * 60
+        elif self.default_interval['unit'] == 'HOUR':
+            seconds = self.default_interval['count'] * 60 * 60
+        elif self.default_interval['unit'] == 'DAY':
+            seconds = self.default_interval['count'] * 60 * 60 * 24
+        elif self.default_interval['unit'] == 'WEEK':
+            seconds = self.default_interval['count'] * 60 * 60 * 24 * 7
+        elif self.default_interval['unit'] == 'MONTH':
+            seconds = self.default_interval['count'] * 60 * 60 * 24 * 31
+        elif self.default_interval['unit'] == 'QUARTER':
+            seconds = self.default_interval['count'] * 60 * 60 * 24 * 31 * 3
+        elif self.default_interval['unit'] == 'YEAR':
+            seconds = self.default_interval['count'] * 60 * 60 * 24 * 365
+        else:
+            raise ValueError('wrong interval unit')
+
+        if not self._last_fetch or abs(end_time - time.time()) < 2:
+            return end_time - seconds, end_time
+        else:
+            return start_time, end_time
