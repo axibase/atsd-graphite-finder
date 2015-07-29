@@ -151,9 +151,14 @@ class AtsdFinderV(object):
             elif token_type in ['period', 'interval']:
             
                 for time_dict in token_desc:
+                
                     if token == time_dict['label']:
-                    
-                        info[token_type] = time_dict
+                        
+                        if time_dict['count'] != 0:
+                            info[token_type] = time_dict
+                        else:
+                            info[token_type] = None
+                            
                         break
         
         return info
@@ -287,7 +292,7 @@ class AtsdFinderV(object):
                                 tags = info['tags']
                                 interval = info['interval'] if 'interval' in info else None
                                     
-                                if not 'period' in info or info['period']['count'] == 0:
+                                if not 'period' in info or info['period'] == None:
                                     reader = AtsdReader(entity, metric, tags, interval)
                                 else:
                                     period_count = info['period']['count']
@@ -324,7 +329,7 @@ class AtsdFinderV(object):
                                     tags = info['tags']
                                     interval = info['interval'] if 'interval' in info else None
                                         
-                                    if not 'period' in info or info['period']['count'] == 0:
+                                    if not 'period' in info or info['period'] == None:
                                         reader = AtsdReader(entity, metric, tags, interval)
                                     else:
                                         period_count = info['period']['count']
@@ -414,7 +419,7 @@ class AtsdFinderV(object):
                                     tags = info['tags']
                                     interval = info['interval'] if 'interval' in info else None
                                         
-                                    if not 'period' in info or info['period']['count'] == 0:
+                                    if not 'period' in info or info['period'] == None:
                                         reader = AtsdReader(entity['name'], metric, tags, interval)
                                     else:
                                         period_count = info['period']['count']
@@ -476,7 +481,7 @@ class AtsdFinderV(object):
                                 tags = info['tags']
                                 interval = info['interval'] if 'interval' in info else None
                                 
-                                if not 'period' in info or info['period']['count'] == 0:
+                                if not 'period' in info or info['period'] == None:
                                     reader = AtsdReader(entity, metric['name'], tags, interval)
                                 else:
                                     period_count = info['period']['count']
@@ -550,7 +555,7 @@ class AtsdFinderV(object):
                                         metric = info['metric']
                                         interval = info['interval'] if 'interval' in info else None
                                         
-                                        if not 'period' in info or info['period']['count'] == 0:
+                                        if not 'period' in info or info['period'] == None:
                                             reader = AtsdReader(entity, metric, tags, interval)
                                         else:
                                             period_count = info['period']['count']
@@ -581,7 +586,7 @@ class AtsdFinderV(object):
                                 tags = info['tags']
                                 interval = info['interval'] if 'interval' in info else None
                                     
-                                if not 'period' in info or info['period']['count'] == 0:
+                                if not 'period' in info or info['period'] == None:
                                     reader = AtsdReader(entity, metric, tags, interval)
                                 else:
                                     period_count = info['period']['count']
@@ -661,7 +666,7 @@ class AtsdFinderV(object):
                     tags = g_info['tags']
                     interval = g_info['interval'] if 'interval' in g_info else None
                         
-                    if not 'period' in g_info or g_info['period']['count'] == 0:
+                    if not 'period' in g_info or g_info['period'] == None:
                         reader = AtsdReader(entity, metric, tags, interval)
                     else:
                         period_count = g_info['period']['count']
