@@ -31,11 +31,11 @@ class AtsdFinder(object):
 
         try:
             # noinspection PyUnresolvedReferences
-            pid = unicode(os.getppid()) + ' : ' + unicode(os.getpid())
+            self.pid = unicode(os.getppid()) + ':' + unicode(os.getpid())
         except AttributeError:
-            pid = unicode(os.getpid())
+            self.pid = unicode(os.getpid())
 
-        self.log('init: pid = ' + pid)
+        self.log('init')
 
         self.url_base = ATSD_CONF['url'] + '/api/v1'
         self.auth = (ATSD_CONF['username'], ATSD_CONF['password'])
@@ -78,7 +78,7 @@ class AtsdFinder(object):
 
     def log(self, message):
     
-        log.info('[' + self.__class__.__name__ + '] ' + message)
+        log.info('[' + self.__class__.__name__ + ' ' + self.pid + '] ' + message)
     
     def get_info(self, pattern):
 
