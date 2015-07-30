@@ -1,14 +1,13 @@
 # -*- coding: utf-8 -*-
 
 import requests
-import urllib
 import json
 import fnmatch
 import os
 import copy
 
 from graphite.local_settings import ATSD_CONF
-from .utils import quote, metric_quote
+from .utils import quote, metric_quote, unquote
 
 from .reader import AtsdReader, Aggregator
 try:
@@ -55,7 +54,7 @@ class AtsdFinderV(object):
         tokens = pattern.split('.')
         
         try:
-            tokens[:] = [urllib.unquote(token) for token in tokens] if pattern != '' else []
+            tokens[:] = [unquote(token) for token in tokens] if pattern != '' else []
         except:
             info['valid'] = False
             return info
