@@ -7,6 +7,9 @@ import fnmatch
 import re
 import os
 
+import datetime
+import calendar
+
 from graphite.intervals import Interval, IntervalSet
 
 try:
@@ -27,6 +30,26 @@ NON_GROUP_STATS = ('FIRST',
                    'THRESHOLD_COUNT',
                    'THRESHOLD_DURATION',
                    'THRESHOLD_PERCENT')
+
+
+def _time_minus_month(ts, months):
+    """substract given number of month from timestamp
+
+    :param ts: `Number` timestamp in seconds
+    :param months: `int` months to substract
+    :return: `Number` timestamp in seconds
+    """
+
+    dt = datetime.datetime.utcfromtimestamp(ts)
+
+    month = dt.month - months - 1  # month + 12*year_delta - 1
+    year = dt.year + month // 12
+    month = month % 12 + 1
+    day = min(dt.day, calendar.monthrange(year, month)[1])
+
+    resdt = datetime.datetime(year, month, day, dt.hour, dt.minute, dt.second)
+
+    return calendar.timegm(resdt.timetuple())
 
 
 def _round_step(step):
@@ -70,7 +93,8 @@ def _regularize(series):
     start_time = ((series[0]['t'] / 1000.0) // step) * step
     end_time = ((series[-1]['t'] / 1000.0) // step + 1) * step
 
-    log.info('[AtsdReader] reqularize {0}:{1}:{2}'.format(start_time, step, end_time))
+    log.info('[AtsdReader] reqularize {0}:{1}:{2}'
+             .format(start_time, step, end_time))
     number_points = int((end_time - start_time) // step)
 
     values = []
@@ -373,10 +397,10 @@ class AtsdReader(object):
     __slots__ = ('_instance',
                  'aggregator',
                  '_interval_schema',
-                 'default_interval',
-                 '_last_fetch')
+                 'default_interval')
 
-    def __init__(self, entity, metric, tags, default_interval=None, aggregator=None):
+    def __init__(self, entity, metric, tags,
+                 default_interval=None, aggregator=None):
         #: :class: `.Node`
         self._instance = Instance(entity, metric, tags)
 
@@ -445,7 +469,6 @@ class AtsdReader(object):
         log.info('[AtsdReader] fetched {:d} values, step={:f}'
                  .format(len(values), time_info[2]))
 
-        self._last_fetch = end_time
         return time_info, values
 
     def get_intervals(self):
@@ -482,12 +505,25 @@ class AtsdReader(object):
             seconds = self.default_interval['count'] * 60 * 60 * 24
         elif self.default_interval['unit'] == 'WEEK':
             seconds = self.default_interval['count'] * 60 * 60 * 24 * 7
+
         elif self.default_interval['unit'] == 'MONTH':
-            seconds = self.default_interval['count'] * 60 * 60 * 24 * 31
+
+            start_time = _time_minus_month(end_time,
+                                           self.default_interval['count'])
+            return start_time, end_time
+
         elif self.default_interval['unit'] == 'QUARTER':
-            seconds = self.default_interval['count'] * 60 * 60 * 24 * 31 * 3
+
+            start_time = _time_minus_month(end_time,
+                                           self.default_interval['count'] * 3)
+            return start_time, end_time
+
         elif self.default_interval['unit'] == 'YEAR':
-            seconds = self.default_interval['count'] * 60 * 60 * 24 * 365
+
+            start_time = _time_minus_month(end_time,
+                                           self.default_interval['count'] * 12)
+            return start_time, end_time
+
         else:
             raise ValueError('wrong interval unit')
 
