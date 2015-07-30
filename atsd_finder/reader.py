@@ -66,9 +66,11 @@ def _regularize(series):
     step = _median_delta(times)
     step = _round_step(step)
 
-    start_time = series[0]['t'] / 1000.0
-    end_time = series[-1]['t'] / 1000.0 + step
+    # round to divisible by step
+    start_time = ((series[0]['t'] / 1000.0) // step) * step
+    end_time = ((series[-1]['t'] / 1000.0) // step + 1) * step
 
+    log.info('[AtsdReader] reqularize {0}:{1}:{2}'.format(start_time, step, end_time))
     number_points = int((end_time - start_time) // step)
 
     values = []
@@ -259,7 +261,6 @@ class Instance(object):
     __slots__ = ('entity_name', 'metric_name', 'tags', '_session', '_context')
 
     def __init__(self, entity_name, metric_name, tags):
-        # TODO check that node exists, get unique combination of fields
         #: `str`
         self.entity_name = entity_name
         #: `str`
@@ -397,7 +398,8 @@ class AtsdReader(object):
                  + ' metric=' + unicode(metric)
                  + ' tags=' + unicode(tags)
                  + ' url=' + unicode(settings.ATSD_CONF['url'])
-                 + ' aggregator=' + str(aggregator))
+                 + ' aggregator=' + unicode(aggregator)
+                 + ' interval=' + unicode(default_interval))
 
     def fetch(self, start_time, end_time):
         """fetch time series

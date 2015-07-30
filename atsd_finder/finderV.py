@@ -547,7 +547,7 @@ class AtsdFinderV(object):
                                 
                             elif 'metric' in info:
                             
-                                info['period'] = period
+                                info['period'] = period if period['count'] != 0 else None
                             
                                 yield self.make_leaf(path, info)
                                 
@@ -565,7 +565,7 @@ class AtsdFinderV(object):
                                 
                             elif 'metric' in info:
                             
-                                info['interval'] = interval
+                                info['interval'] = interval if interval['count'] != 0 else None
                                 
                                 yield self.make_leaf(path, info)
                 

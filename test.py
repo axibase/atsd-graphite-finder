@@ -90,7 +90,7 @@ class TestReaderFetch(unittest.TestCase):
                                         {'host': 'NURSWGVML007'},
                                         default_interval={'unit': 'SECOND', 'count': 60})
         time_info, values = reader.fetch(now - 24 * 60 * 60, now)
-        self.assertGreater(60 + time_info[3], time_info[1] - time_info[0])
+        self.assertGreater(60 + time_info[2], time_info[1] - time_info[0])
 
 
 class TestReader(unittest.TestCase):
