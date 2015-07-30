@@ -343,6 +343,11 @@ class Instance(object):
         :return: series data [{t,v}]
         """
 
+        if aggregator and aggregator.unit == 'SECOND':
+            step = aggregator.count
+            start_time = (start_time // step) * step
+            end_time = (end_time // step + 1) * step
+
         tags_query = {}
         for key in self.tags:
             tags_query[key] = [self.tags[key]]
@@ -466,8 +471,8 @@ class AtsdReader(object):
         else:
             time_info, values = _regularize(series)
 
-        log.info('[AtsdReader] fetched {:d} values, step={:f}'
-                 .format(len(values), time_info[2]))
+        log.info('[AtsdReader] fetched {0} values, time_info={1}:{2}:{3}'
+                 .format(len(values), time_info[0], time_info[2], time_info[1]))
 
         return time_info, values
 
