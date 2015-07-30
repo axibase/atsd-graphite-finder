@@ -6,6 +6,9 @@ import fnmatch
 import re
 import os
 
+import datetime
+import calendar
+
 from . import utils
 from graphite.intervals import Interval, IntervalSet
 
@@ -27,6 +30,41 @@ NON_GROUP_STATS = ('FIRST',
                    'THRESHOLD_COUNT',
                    'THRESHOLD_DURATION',
                    'THRESHOLD_PERCENT')
+
+
+def _time_minus_months(ts, months):
+    """substract given number of months from timestamp
+
+    :param ts: `Number` timestamp in seconds
+    :param months: `int` months to substract
+    :return: `Number` timestamp in seconds
+    """
+
+    dt = datetime.datetime.utcfromtimestamp(ts)
+
+    month = dt.month - months - 1  # month + 12*year_delta - 1
+    year = dt.year + month // 12
+    month = month % 12 + 1
+    day = min(dt.day, calendar.monthrange(year, month)[1])
+
+    resdt = datetime.datetime(year, month, day, dt.hour, dt.minute, dt.second)
+    log.info('[AtsdReader] ' + str(dt) + ' - ' + str(months) + 'mon = ' + str(resdt))
+
+    return calendar.timegm(resdt.timetuple())
+
+
+def _time_minus_days(ts, days):
+    """substract given number of days from timestamp
+
+    :param ts: `Number` timestamp in seconds
+    :param days: `int` days to substract
+    :return: `Number` timestamp in seconds
+    """
+
+    dt = datetime.datetime.utcfromtimestamp(ts)
+    resdt = dt - datetime.timedelta(days=days)
+
+    return calendar.timegm(resdt.timetuple())
 
 
 def _round_step(step):
@@ -312,12 +350,11 @@ class Instance(object):
 
         return response.json()
 
-    def query_series(self, start_time, end_time, aggregator, interval):
+    def query_series(self, start_time, end_time, aggregator):
         """
         :param start_time: `Number` seconds
         :param end_time: `Number` seconds
         :param aggregator: :class:`.Aggregator` | None
-        :param interval: {count: `Number`, unit: `str`} | None
         :return: series data [{t,v}]
         """
 
@@ -330,31 +367,28 @@ class Instance(object):
         for key in self.tags:
             tags_query[key] = [self.tags[key]]
 
-        query = {
-            'endTime': int(end_time * 1000),
-            'entity': self.entity_name,
-            'metric': self.metric_name,
-            'tags': tags_query
+        data = {
+            'queries': [
+                {
+                    'startTime': int(start_time * 1000),
+                    'endTime': int(end_time * 1000),
+                    'entity': self.entity_name,
+                    'metric': self.metric_name,
+                    'tags': tags_query
+                }
+            ]
         }
-
-        if interval:
-            query['interval'] = interval
-        else:
-            query['startTime'] = int(start_time * 1000)
 
         if aggregator and aggregator.type != 'DETAIL':
             # request regularized data
             if aggregator.type in NON_GROUP_STATS:
-                query['group'] = {"type": "SUM",
-                                  "interval": {"count": aggregator.count,
-                                               "unit": aggregator.unit}}
-                query['aggregate'] = aggregator.json()
+                data['queries'][0]['group'] = {"type": "SUM",
+                                               "interval": {
+                                                   "count": aggregator.count,
+                                                   "unit": aggregator.unit}}
+                data['queries'][0]['aggregate'] = aggregator.json()
             else:
-                query['group'] = aggregator.json()
-
-        data = {
-            'queries': [query]
-        }
+                data['queries'][0]['group'] = aggregator.json()
 
         resp = self._request('POST', 'series', data)
 
@@ -418,6 +452,9 @@ class AtsdReader(object):
         :param end_time: `Number` seconds
         """
 
+        if self.default_interval:
+            start_time, end_time = self._apply_default_interval(end_time)
+
         log.info(
             '[AtsdReader] fetching:  start_time={:f} end_time= {:f}'
             .format(start_time, end_time)
@@ -430,8 +467,7 @@ class AtsdReader(object):
 
         series = self._instance.query_series(start_time,
                                              end_time,
-                                             aggregator,
-                                             self.default_interval)
+                                             aggregator)
 
         log.info('[AtsdReader] get series of {:d} samples'.format(len(series)))
 
@@ -474,3 +510,48 @@ class AtsdReader(object):
         start_time = (end_time - retention) if retention else 1
 
         return IntervalSet([Interval(start_time, end_time)])
+
+    def _apply_default_interval(self, end_time):
+
+        if self.default_interval['unit'] == 'MILLISECOND':
+            seconds = self.default_interval['count'] / 1000.0
+        elif self.default_interval['unit'] == 'SECOND':
+            seconds = self.default_interval['count']
+        elif self.default_interval['unit'] == 'MINUTE':
+            seconds = self.default_interval['count'] * 60
+        elif self.default_interval['unit'] == 'HOUR':
+            seconds = self.default_interval['count'] * 60 * 60
+        elif self.default_interval['unit'] == 'DAY':
+
+            start_time = _time_minus_days(end_time,
+                                          self.default_interval['count'])
+            return start_time, end_time
+
+        elif self.default_interval['unit'] == 'WEEK':
+
+            start_time = _time_minus_days(end_time,
+                                          self.default_interval['count'] * 7)
+            return start_time, end_time
+
+        elif self.default_interval['unit'] == 'MONTH':
+
+            start_time = _time_minus_months(end_time,
+                                           self.default_interval['count'])
+            return start_time, end_time
+
+        elif self.default_interval['unit'] == 'QUARTER':
+
+            start_time = _time_minus_months(end_time,
+                                           self.default_interval['count'] * 3)
+            return start_time, end_time
+
+        elif self.default_interval['unit'] == 'YEAR':
+
+            start_time = _time_minus_months(end_time,
+                                           self.default_interval['count'] * 12)
+            return start_time, end_time
+
+        else:
+            raise ValueError('wrong interval unit')
+
+        return end_time - seconds, end_time

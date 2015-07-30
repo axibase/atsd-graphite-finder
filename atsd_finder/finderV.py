@@ -556,8 +556,8 @@ class AtsdFinderV(object):
                 elif leaf_request:
                 
                     if 'metric' in g_info:
-                        yield self.make_leaf(pattern, '')
+                        yield self.make_leaf(pattern, g_info)
                         
-        except Exception as e:
+        except StandardError as e:
         
             self.log_exc(unicode(e))

@@ -489,6 +489,6 @@ class AtsdFinder(object):
                     
                     yield LeafNode(pattern, reader)
                     
-        except Exception as e:
+        except StandardError as e:
         
             self.log_exc(unicode(e))
