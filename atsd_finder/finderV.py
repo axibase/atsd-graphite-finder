@@ -82,23 +82,8 @@ class AtsdFinderV(object):
             level = build[i]
             
             if 'global' in level:
-                for g_token in level['global']:
-                
-                    g_token_type = g_token['type']
-                    g_token_value = g_token['value'][0]
-                    
-                    if not g_token_type in specific:
-                        
-                        info[g_token_type] = g_token_value
-                        
-                    elif g_token_type == 'tag':
-                    
-                        for tag_name in g_token_value:
-                
-                            tag_value = g_token_value[tag_name]
+                info = self.extract_var(info, level['global'])
                             
-                            info['tags'][tag_name] = tag_value
-
             token_type = level['type']
             token_desc = level['value']
             
@@ -161,6 +146,25 @@ class AtsdFinderV(object):
                             
                         break
         
+        return info
+        
+    def extract_var(self, info, scope):
+    
+        for token in scope:
+        
+            token_type = token['type']
+            token_value = token['value'][0]
+            
+            if token_type != 'tag':
+                
+                info[token_type] = token_value
+                
+            else:
+            
+                for tag_name in token_value:
+                    tag_value = token_value[tag_name]
+                    info['tags'][tag_name] = tag_value
+                        
         return info
         
     def make_branch(self, path):
@@ -252,21 +256,7 @@ class AtsdFinderV(object):
                 specific = ['tag', 'const']
                 
                 if 'global' in level:
-                    for g_token in level['global']:
-                    
-                        g_token_type = g_token['type']
-                        g_token_value = g_token['value'][0]
-                        
-                        if not g_token_type in specific:
-                            
-                            g_info[g_token_type] = g_token_value
-                            
-                        elif g_token_type == 'tag':
-                        
-                            for tag_name in g_token_value:
-                            
-                                tag_value = g_token_value[tag_name]
-                                g_info['tags'][tag_name] = tag_value
+                    g_info = self.extract_var(g_info, level['global'])
                                 
                 self.log('global info = ' + json.dumps(g_info))
                 
@@ -287,21 +277,7 @@ class AtsdFinderV(object):
                     specific = ['tag', 'const']
                     
                     if 'local' in token:
-                        for l_token in token['local']:
-                        
-                            l_token_type = l_token['type']
-                            l_token_value = l_token['value'][0]
-                            
-                            if not l_token_type in specific:
-                                
-                                info[l_token_type] = l_token_value
-                                
-                            elif l_token_type == 'tag':
-                            
-                                for tag_name in l_token_value:
-                                
-                                    tag_value = l_token_value[tag_name]
-                                    info['tags'][tag_name] = tag_value
+                        info = self.extract_var(info, token['local'])
                                     
                     self.log('local info = ' + unicode(info))
                 
