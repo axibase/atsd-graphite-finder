@@ -3,6 +3,7 @@
 import requests
 import urllib
 import json
+import fnmatch
 import re
 import os
 
@@ -169,15 +170,30 @@ class AtsdFinder(object):
         return info
 
     def find_nodes(self, query):
-
-        # self.log('finding nodes: query = ' + query.pattern)
+    
+        self.log('query = ' + query.pattern)
         
-        if len(query.pattern) != 0 and query.pattern[-1] != '*':
-            leaf_request = True
-        else:
+        if len(query.pattern) == 0:
+            raise StopIteration
+        
+        pattern_match = query.pattern
+        
+        if query.pattern[-1] == '*':
+        
             leaf_request = False
+            
+            if len(query.pattern) == 1 or query.pattern[-2] == '.':
+                pattern = query.pattern[:-2]
+            else:
+                if '.' in query.pattern:
+                    pattern = query.pattern.rsplit('.', 1)[0]
+                else:
+                    pattern = ''
+            
+        else:
         
-        pattern = query.pattern[:-2] if query.pattern[-1] == '*' else query.pattern
+            leaf_request = True
+            pattern = query.pattern
         
         info = self.get_info(pattern)
         self.log(json.dumps(info))
@@ -190,9 +206,9 @@ class AtsdFinder(object):
 
             for root in self.roots:
                 
-                # self.log('path = ' + root)
-
-                yield BranchNode(metric_quote(root))
+                if fnmatch.fnmatch(root, pattern_match):
+                    # self.log('path = ' + root)
+                    yield BranchNode(metric_quote(root))
         
         elif info['tokens'] == 1:
 
@@ -200,17 +216,19 @@ class AtsdFinder(object):
                 for folder in self.entity_folders:
                     
                     path = pattern + '.' + metric_quote(folder)
-                    # self.log('path = ' + path)
-
-                    yield BranchNode(path)
+                    
+                    if fnmatch.fnmatch(path, pattern_match):
+                        # self.log('path = ' + path)
+                        yield BranchNode(path)
 
             elif info['type'] == 'metrics':
                 for folder in self.metric_folders:
 
                     path = pattern + '.' + metric_quote(folder)
-                    # self.log('path = ' + path)
-
-                    yield BranchNode(path)
+                    
+                    if fnmatch.fnmatch(path, pattern_match):
+                        # self.log('path = ' + path)
+                        yield BranchNode(path)
 
         elif info['tokens'] == 2:
         
@@ -238,9 +256,10 @@ class AtsdFinder(object):
                 if not other:
                     
                     path = pattern + '.' + metric_quote(smth['name'])
-                    # self.log('path = ' + path)
-
-                    yield BranchNode(path)
+                    
+                    if fnmatch.fnmatch(path, pattern_match):
+                        # self.log('path = ' + path)
+                        yield BranchNode(path)
 
                 else:
 
@@ -265,9 +284,10 @@ class AtsdFinder(object):
                     if not matches:
                         
                         path = pattern + '.' + metric_quote(smth['name'])
-                        # self.log('path = ' + path)
-
-                        yield BranchNode(path)
+                        
+                        if fnmatch.fnmatch(path, pattern_match):
+                            # self.log('path = ' + path)
+                            yield BranchNode(path)
 
         elif info['tokens'] == 3:
 
@@ -284,9 +304,10 @@ class AtsdFinder(object):
                 for metric in response.json():
                     
                     path = pattern + '.' + metric_quote( metric['name'])
-                    # self.log('path = ' + path)
-
-                    yield BranchNode(path)
+                    
+                    if fnmatch.fnmatch(path, pattern_match):
+                        # self.log('path = ' + path)
+                        yield BranchNode(path)
 
             elif info['type'] == 'metrics':
 
@@ -307,9 +328,10 @@ class AtsdFinder(object):
                 for entity in entities:
                     
                     path = pattern + '.' + metric_quote(entity)
-                    # self.log('path = ' + path)
                     
-                    yield BranchNode(path)
+                    if fnmatch.fnmatch(path, pattern_match):
+                        # self.log('path = ' + path)
+                        yield BranchNode(path)
 
         elif info['tokens'] > 3 and not 'detail' in info:
 
@@ -372,46 +394,51 @@ class AtsdFinder(object):
                                 labels.append(label)
                             
                                 path = pattern + '.' + metric_quote(tag_name + ': ' + tag_combo[tag_name])
-                                # self.log('path = ' + path)
                                 
-                                yield BranchNode(path)
+                                if fnmatch.fnmatch(path, pattern_match):
+                                    # self.log('path = ' + path)
+                                    yield BranchNode(path)
                                 
                             break
                             
             if not found:
                 
                 path = pattern + '.' + metric_quote('detail')
-                # self.log('path = ' + path)
                 
-                reader = AtsdReader(entity, metric, tags)
-                
-                yield LeafNode(path, reader)
+                if fnmatch.fnmatch(path, pattern_match):
+                    # self.log('path = ' + path)
+                    reader = AtsdReader(entity, metric, tags)
+                    yield LeafNode(path, reader)
                 
                 path = pattern + '.' + metric_quote('stats')
-                # self.log('path = ' + path)
                 
-                yield BranchNode(path)
+                if fnmatch.fnmatch(path, pattern_match):
+                    # self.log('path = ' + path)
+                    yield BranchNode(path)
                 
         elif not 'aggregator' in info:
         
             if info['detail']:
             
-                entity = info['entity']
-                metric = info['metric']
-                tags = info['tags']
-                
-                reader = AtsdReader(entity, metric, tags)
-                
-                yield LeafNode(pattern, reader)
+                if fnmatch.fnmatch(pattern, pattern_match):
+            
+                    entity = info['entity']
+                    metric = info['metric']
+                    tags = info['tags']
+                    
+                    reader = AtsdReader(entity, metric, tags)
+                    
+                    yield LeafNode(pattern, reader)
             
             else:
             
                 for aggregator in self.aggregators:
                     
                     path = pattern + '.' + metric_quote(aggregator)
-                    # self.log('path = ' + path)
                     
-                    yield BranchNode(path)
+                    if fnmatch.fnmatch(path, pattern_match):
+                        # self.log('path = ' + path)
+                        yield BranchNode(path)
             
         elif not 'period' in info:
 
@@ -423,31 +450,36 @@ class AtsdFinder(object):
             for period_name in self.period_names:
             
                 path = pattern + '.' + metric_quote(period_name)
-                # self.log('path = ' + path)
                 
-                period = self.periods[self.period_names.index(period_name)]
-                self.log('aggregator = ' + aggregator + ', period = ' + unicode(period))
+                if fnmatch.fnmatch(path, pattern_match):
+                
+                    # self.log('path = ' + path)
+                    
+                    period = self.periods[self.period_names.index(period_name)]
+                    self.log('aggregator = ' + aggregator + ', period = ' + unicode(period))
 
-                if period != 0:
-                    reader = AtsdReader(entity, metric, tags, Aggregator(aggregator, period))
-                else:
-                    reader = AtsdReader(entity, metric, tags)
-                
-                yield LeafNode(path, reader)
+                    if period != 0:
+                        reader = AtsdReader(entity, metric, tags, None, Aggregator(aggregator, period))
+                    else:
+                        reader = AtsdReader(entity, metric, tags)
+                    
+                    yield LeafNode(path, reader)
                 
         else:
         
-            entity = info['entity']
-            metric = info['metric']
-            tags = info['tags']
-            
-            aggregator = info['aggregator'].upper()
-            period = info['period']
-            self.log('aggregator = ' + aggregator + ', period = ' + unicode(period))
+            if fnmatch.fnmatch(pattern, pattern_match):
+        
+                entity = info['entity']
+                metric = info['metric']
+                tags = info['tags']
+                
+                aggregator = info['aggregator'].upper()
+                period = info['period']
+                self.log('aggregator = ' + aggregator + ', period = ' + unicode(period))
 
-            if period != 0:
-                reader = AtsdReader(entity, metric, tags, Aggregator(aggregator, period))
-            else:
-                reader = AtsdReader(entity, metric, tags)
-            
-            yield LeafNode(pattern, reader)
+                if period != 0:
+                    reader = AtsdReader(entity, metric, tags, None, Aggregator(aggregator, period))
+                else:
+                    reader = AtsdReader(entity, metric, tags)
+                
+                yield LeafNode(pattern, reader)
