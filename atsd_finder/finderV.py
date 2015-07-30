@@ -193,12 +193,27 @@ class AtsdFinderV(object):
 
         self.log('query = ' + query.pattern)
         
-        if len(query.pattern) != 0 and query.pattern[-1] != '*':
-            leaf_request = True
-        else:
-            leaf_request = False
+        if len(query.pattern) == 0:
+            raise StopIteration
         
-        pattern = query.pattern[:-2] if not leaf_request else query.pattern
+        pattern_match = query.pattern
+        
+        if query.pattern[-1] == '*':
+        
+            leaf_request = False
+            
+            if len(query.pattern) == 1 or query.pattern[-2] == '.':
+                pattern = query.pattern[:-2]
+            else:
+                if '.' in query.pattern:
+                    pattern = query.pattern.rsplit('.', 1)[0]
+                else:
+                    pattern = ''
+            
+        else:
+        
+            leaf_request = True
+            pattern = query.pattern
         
         g_info = self.get_info(pattern, leaf_request)
         self.log('initial info = ' + json.dumps(g_info))
@@ -211,8 +226,9 @@ class AtsdFinderV(object):
             for build_name in self.builds:
 
                 path = metric_quote(build_name)
-            
-                yield self.make_branch(path)
+                
+                if fnmatch.fnmatch(path, pattern_match):
+                    yield self.make_branch(path)
         
         else:
 
@@ -300,14 +316,13 @@ class AtsdFinderV(object):
                         for string in token_value:
 
                             path = pattern + '.' + metric_quote(prefix + string)
+                            
+                            if fnmatch.fnmatch(path, pattern_match):
                         
-                            if not is_leaf:
-
-                                yield self.make_branch(path)
-                            
-                            elif 'metric' in info:
-                            
-                                yield self.make_leaf(path, info)
+                                if not is_leaf:
+                                    yield self.make_branch(path)
+                                elif 'metric' in info:
+                                    yield self.make_leaf(path, info)
                             
                     elif token_type in ['entity folder', 'metric folder']:
                         
@@ -319,14 +334,13 @@ class AtsdFinderV(object):
                                or token_type in info and fnmatch.fnmatch(folder, info[token_type]):
 
                                 path = pattern + '.' + metric_quote(prefix + folder_dict[folder])
-
-                                if not is_leaf:
                                 
-                                    yield self.make_branch(path)
-                                    
-                                elif 'metric' in info:
-                        
-                                    yield self.make_leaf(path, info)
+                                if fnmatch.fnmatch(path, pattern_match):
+
+                                    if not is_leaf:
+                                        yield self.make_branch(path)
+                                    elif 'metric' in info:
+                                        yield self.make_leaf(path, info)
                     
                     elif token_type == 'entity':
 
@@ -364,8 +378,9 @@ class AtsdFinderV(object):
                             for entity in response.json():
 
                                 path = pattern + '.' + metric_quote(prefix + entity['name'])
-
-                                yield self.make_branch(path)
+                                
+                                if fnmatch.fnmatch(path, pattern_match):
+                                    yield self.make_branch(path)
                                 
                         elif 'metric' in info:
                         
@@ -395,15 +410,13 @@ class AtsdFinderV(object):
 
                                 path = pattern + '.' + metric_quote(prefix + entity)
                                 
-                                if not is_leaf:
+                                if fnmatch.fnmatch(path, pattern_match):
                                 
-                                    yield self.make_branch(path)
-                                    
-                                else:
-                                
-                                    info['entity'] = entity
-                        
-                                    yield self.make_leaf(path, info)
+                                    if not is_leaf:
+                                        yield self.make_branch(path)
+                                    else:
+                                        info['entity'] = entity
+                                        yield self.make_leaf(path, info)
                                 
                     elif token_type == 'metric':
 
@@ -445,16 +458,14 @@ class AtsdFinderV(object):
 
                             path = pattern + '.' + metric_quote(prefix + metric['name'])
                             
-                            if not is_leaf:
-
-                                yield self.make_branch(path)
-                                
-                            else:
+                            if fnmatch.fnmatch(path, pattern_match):
                             
-                                info['metric'] = metric
-                                
-                                yield self.make_leaf(path, info)
-                                
+                                if not is_leaf:
+                                    yield self.make_branch(path)
+                                else:
+                                    info['metric'] = metric['name']
+                                    yield self.make_leaf(path, info)
+                                    
                     elif token_type == 'tag':
                     
                         if 'metric' in info:
@@ -503,17 +514,15 @@ class AtsdFinderV(object):
                                     tag_combos.append(tag_combo)
 
                                     path = pattern + '.' + metric_quote(prefix + ', '.join(tag_values))
+                                    
+                                    if fnmatch.fnmatch(path, pattern_match):
                                 
-                                    if not is_leaf:
-                                    
-                                        yield self.make_branch(path)
-                                    
-                                    else:
-                                        
-                                        t_info = copy.deepcopy(info)
-                                        t_info['tags'].update(tag_combo)
-                                            
-                                        yield self.make_leaf(path, t_info)
+                                        if not is_leaf:
+                                            yield self.make_branch(path)
+                                        else:
+                                            t_info = copy.deepcopy(info)
+                                            t_info['tags'].update(tag_combo)
+                                            yield self.make_leaf(path, t_info)
                             
                     elif token_type == 'aggregator':
                     
@@ -523,15 +532,13 @@ class AtsdFinderV(object):
 
                             path = pattern + '.' + metric_quote(prefix + aggregator_dict[aggregator])
                             
-                            if not is_leaf:
-
-                                yield self.make_branch(path)
-                                
-                            elif 'metric' in info:
+                            if fnmatch.fnmatch(path, pattern_match):
                             
-                                info['aggregator'] = aggregator
-                                
-                                yield self.make_leaf(path, info)
+                                if not is_leaf:
+                                    yield self.make_branch(path)
+                                elif 'metric' in info:
+                                    info['aggregator'] = aggregator
+                                    yield self.make_leaf(path, info)
                             
                     elif token_type == 'period':
                     
@@ -540,16 +547,14 @@ class AtsdFinderV(object):
                             period_label = period['label']
 
                             path = pattern + '.' + metric_quote(prefix + period_label)
-
-                            if not is_leaf:
-
-                                yield self.make_branch(path)
-                                
-                            elif 'metric' in info:
                             
-                                info['period'] = period if period['count'] != 0 else None
-                            
-                                yield self.make_leaf(path, info)
+                            if fnmatch.fnmatch(path, pattern_match):
+
+                                if not is_leaf:
+                                    yield self.make_branch(path)
+                                elif 'metric' in info:
+                                    info['period'] = period
+                                    yield self.make_leaf(path, info)
                                 
                     elif token_type == 'interval':
                     
@@ -558,19 +563,16 @@ class AtsdFinderV(object):
                             interval_label = interval['label']
 
                             path = pattern + '.' + metric_quote(prefix + interval_label)
-
-                            if not is_leaf:
-
-                                yield self.make_branch(path)
-                                
-                            elif 'metric' in info:
                             
-                                info['interval'] = interval if interval['count'] != 0 else None
-                                
-                                yield self.make_leaf(path, info)
+                            if fnmatch.fnmatch(path, pattern_match):
+
+                                if not is_leaf:
+                                    yield self.make_branch(path)
+                                elif 'metric' in info:
+                                    info['interval'] = interval
+                                    yield self.make_leaf(path, info)
                 
             elif leaf_request:
             
                 if 'metric' in g_info:
-            
                     yield self.make_leaf(pattern, g_info)
