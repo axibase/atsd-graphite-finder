@@ -3,7 +3,7 @@ import urllib
 
 def quote(string):
 
-    return urllib.quote(string.encode('utf8'), safe='*')
+    return urllib.quote(string.encode('utf8'), safe='')
 
 
 def metric_quote(string):

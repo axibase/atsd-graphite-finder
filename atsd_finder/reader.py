@@ -1,7 +1,6 @@
 import requests
 import json
 import urlparse
-import urllib
 import ConfigParser
 import fnmatch
 import re
@@ -10,6 +9,7 @@ import os
 import datetime
 import calendar
 
+from . import utils
 from graphite.intervals import Interval, IntervalSet
 
 try:
@@ -48,6 +48,7 @@ def _time_minus_month(ts, months):
     day = min(dt.day, calendar.monthrange(year, month)[1])
 
     resdt = datetime.datetime(year, month, day, dt.hour, dt.minute, dt.second)
+    log.info('[AtsdReader] ' + str(dt) + ' - ' + str(months) + 'mon = ' + str(resdt))
 
     return calendar.timegm(resdt.timetuple())
 
@@ -386,7 +387,7 @@ class Instance(object):
         """
 
         return self._request('GET',
-                             'metrics/' + urllib.quote(self.metric_name.encode('utf8'), ''))
+                             'metrics/' + utils.quote(self.metric_name))
 
     def get_entity(self):
         """make meta api request
@@ -395,7 +396,7 @@ class Instance(object):
         """
 
         return self._request('GET',
-                             'entities/' + urllib.quote(self.entity_name.encode('utf8'), ''))
+                             'entities/' + utils.quote(self.entity_name))
 
 
 class AtsdReader(object):
