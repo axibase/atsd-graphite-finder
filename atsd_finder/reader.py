@@ -40,6 +40,8 @@ def _time_minus_months(ts, months):
     :param months: `int` months to substract
     :return: `Number` timestamp in seconds
     """
+
+    months = int(months)
     tz_utc = pytz.timezone('UTC')
     tz_local = pytz.timezone(settings.TIME_ZONE)
 
@@ -60,7 +62,8 @@ def _time_minus_months(ts, months):
                                     dt_local.second).replace(tzinfo=tz_local)
     resdt_utc = resdt_local.astimezone(tz_utc)
 
-    log.info('[AtsdReader] ' + str(dt_local) + ' - ' + str(months) + 'mon = ' + str(resdt_local))
+    log.info('[AtsdReader] {0} - {1}mon - {3}'
+             .format(dt_local, months, resdt_local))
 
     return calendar.timegm(resdt_utc.timetuple())
 
@@ -87,6 +90,48 @@ def _time_minus_days(ts, days):
     log.info('[AtsdReader] ' + str(dt_local) + ' - ' + str(days) + 'days = ' + str(resdt_local))
 
     return calendar.timegm(resdt_utc.timetuple())
+
+
+def _time_minus_interval(end_time, interval):
+    """substract given interval from end_time
+
+    :param end_time:  `Number` timestamp in seconds
+    :param interval: {count: `Number`, unit: `str`}
+    :return: `Number` timestamp in seconds
+    """
+
+    if interval['unit'] == 'MILLISECOND':
+        seconds = interval['count'] / 1000.0
+    elif interval['unit'] == 'SECOND':
+        seconds = interval['count']
+    elif interval['unit'] == 'MINUTE':
+        seconds = interval['count'] * 60
+    elif interval['unit'] == 'HOUR':
+        seconds = interval['count'] * 60 * 60
+    elif interval['unit'] == 'DAY':
+
+        return _time_minus_days(end_time, interval['count'])
+
+    elif interval['unit'] == 'WEEK':
+
+        return _time_minus_days(end_time, interval['count'] * 7)
+
+    elif interval['unit'] == 'MONTH':
+
+        return _time_minus_months(end_time, interval['count'])
+
+    elif interval['unit'] == 'QUARTER':
+
+        return _time_minus_months(end_time, interval['count'] * 3)
+
+    elif interval['unit'] == 'YEAR':
+
+        return _time_minus_months(end_time, interval['count'] * 12)
+
+    else:
+        raise ValueError('wrong interval unit')
+
+    return end_time - seconds
 
 
 def _round_step(step):
@@ -157,27 +202,6 @@ def _regularize(series):
                  step)
 
     return time_info, values
-
-
-def _str_to_sec(val):
-    """
-    :param val: `str` time interval
-    :return: interval `float` seconds
-    """
-    unit = val[-1]
-    num = val[:-1]
-    if unit == 's':
-        return float(num)
-    elif unit == 'm':
-        return float(num) * 60
-    elif unit == 'h':
-        return float(num) * 60 * 60
-    elif unit == 'd':
-        return float(num) * 24 * 60 * 60
-    elif unit == 'y':
-        return float(num) * 24 * 60 * 60 * 365.2425
-    else:
-        return float(val)
 
 
 def _str_to_interval(val):
@@ -280,7 +304,7 @@ class IntervalSchema(object):
                     intervals = self._config.get(section, 'retentions')  # str
                     items = re.split('\s*,\s*', intervals)  # list of str
                     pairs = (item.split(':') for item in items)  # str tuples
-                    self._map = dict((_str_to_sec(b), _str_to_interval(a))
+                    self._map = dict((_str_to_interval(b), _str_to_interval(a))
                                      for a, b in pairs)
                     return
 
@@ -290,22 +314,35 @@ class IntervalSchema(object):
 
         self._map = {}
 
-    def aggregator(self, interval):
+    def aggregator(self, end_time, start_time, interval):
         """find step for current interval using interval schema
+
         return step of lowest schema interval that bigger than current
+        if interval exists do not use start_time
 
         :param interval: `Number` seconds
         :return: :class:`.Aggregator` | None
         """
 
-        intervals = self._map.keys()
-        intervals.sort()
+        if interval:
+            start_time = _time_minus_interval(end_time, interval)
+
+        period_map = {}  # interval_start -> period
+        starts = []
+        for count, unit in self._map:
+            interval = {'count': count, 'unit': unit}
+            interval_start = _time_minus_interval(end_time, interval)
+            starts.append(interval_start)
+            period_map[interval_start] = self._map[(count, unit)]
+
+        starts.sort(reverse=True)
 
         count = 0
         unit = None
-        for i in intervals:
-            if i >= interval:
-                count, unit = self._map[i]
+        for start in starts:
+            print 'aggregator', period_map[start]
+            if start <= start_time:
+                count, unit = period_map[start]
                 break
 
         if count:
@@ -475,17 +512,18 @@ class AtsdReader(object):
         """
 
         if self.default_interval:
-            start_time, end_time = self._apply_default_interval(end_time)
+            start_time = _time_minus_interval(end_time, self.default_interval)
 
         log.info(
-            '[AtsdReader] fetching:  start_time={:f} end_time= {:f}'
+            '[AtsdReader] fetching:  start_time={0} end_time= {1}'
             .format(start_time, end_time)
         )
 
         if self.aggregator:
             aggregator = self.aggregator
         else:
-            aggregator = self._interval_schema.aggregator(end_time - start_time)
+            aggregator = self._interval_schema.aggregator(end_time, start_time,
+                                                          self.default_interval)
 
         series = self._instance.query_series(start_time,
                                              end_time,
@@ -532,48 +570,3 @@ class AtsdReader(object):
         start_time = (end_time - retention) if retention else 1
 
         return IntervalSet([Interval(start_time, end_time)])
-
-    def _apply_default_interval(self, end_time):
-
-        if self.default_interval['unit'] == 'MILLISECOND':
-            seconds = self.default_interval['count'] / 1000.0
-        elif self.default_interval['unit'] == 'SECOND':
-            seconds = self.default_interval['count']
-        elif self.default_interval['unit'] == 'MINUTE':
-            seconds = self.default_interval['count'] * 60
-        elif self.default_interval['unit'] == 'HOUR':
-            seconds = self.default_interval['count'] * 60 * 60
-        elif self.default_interval['unit'] == 'DAY':
-
-            start_time = _time_minus_days(end_time,
-                                          self.default_interval['count'])
-            return start_time, end_time
-
-        elif self.default_interval['unit'] == 'WEEK':
-
-            start_time = _time_minus_days(end_time,
-                                          self.default_interval['count'] * 7)
-            return start_time, end_time
-
-        elif self.default_interval['unit'] == 'MONTH':
-
-            start_time = _time_minus_months(end_time,
-                                            self.default_interval['count'])
-            return start_time, end_time
-
-        elif self.default_interval['unit'] == 'QUARTER':
-
-            start_time = _time_minus_months(end_time,
-                                            self.default_interval['count'] * 3)
-            return start_time, end_time
-
-        elif self.default_interval['unit'] == 'YEAR':
-
-            start_time = _time_minus_months(end_time,
-                                            self.default_interval['count'] * 12)
-            return start_time, end_time
-
-        else:
-            raise ValueError('wrong interval unit')
-
-        return end_time - seconds, end_time

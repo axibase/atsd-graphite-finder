@@ -115,7 +115,7 @@ class TestReader(unittest.TestCase):
     def test_reader_interval_schema(self):
         schema = atsd_finder.reader.IntervalSchema('cpu_busy')
 
-        aggregator = schema.aggregator(60 * 60)
+        aggregator = schema.aggregator(2 * 60 * 60, 1 * 60 * 60, None)
         self.assertIsNone(aggregator)
 
         # aggregator = schema.aggregator(60 * 60 * 24 * 20 + 1)
