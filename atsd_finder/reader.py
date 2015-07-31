@@ -8,6 +8,7 @@ import os
 
 import datetime
 import calendar
+import pytz
 
 from . import utils
 from graphite.intervals import Interval, IntervalSet
@@ -39,18 +40,29 @@ def _time_minus_months(ts, months):
     :param months: `int` months to substract
     :return: `Number` timestamp in seconds
     """
+    tz_utc = pytz.timezone('UTC')
+    tz_local = pytz.timezone(settings.TIME_ZONE)
 
-    dt = datetime.datetime.utcfromtimestamp(ts)
+    dt_naive = datetime.datetime.utcfromtimestamp(ts)  # no tz
+    dt_utc = dt_naive.replace(tzinfo=tz_utc)
+    dt_local = dt_utc.astimezone(tz_local)
 
-    month = dt.month - months - 1  # month + 12*year_delta - 1
-    year = dt.year + month // 12
+    month = dt_local.month - months - 1  # month + 12*year_delta - 1
+    year = dt_local.year + month // 12
     month = month % 12 + 1
-    day = min(dt.day, calendar.monthrange(year, month)[1])
+    day = min(dt_local.day, calendar.monthrange(year, month)[1])
 
-    resdt = datetime.datetime(year, month, day, dt.hour, dt.minute, dt.second)
-    log.info('[AtsdReader] ' + str(dt) + ' - ' + str(months) + 'mon = ' + str(resdt))
+    resdt_local = datetime.datetime(year,
+                                    month,
+                                    day,
+                                    dt_local.hour,
+                                    dt_local.minute,
+                                    dt_local.second).replace(tzinfo=tz_local)
+    resdt_utc = resdt_local.astimezone(tz_utc)
 
-    return calendar.timegm(resdt.timetuple())
+    log.info('[AtsdReader] ' + str(dt_local) + ' - ' + str(months) + 'mon = ' + str(resdt_local))
+
+    return calendar.timegm(resdt_utc.timetuple())
 
 
 def _time_minus_days(ts, days):
@@ -61,10 +73,20 @@ def _time_minus_days(ts, days):
     :return: `Number` timestamp in seconds
     """
 
-    dt = datetime.datetime.utcfromtimestamp(ts)
-    resdt = dt - datetime.timedelta(days=days)
+    tz_utc = pytz.timezone('UTC')
+    tz_local = pytz.timezone(settings.TIME_ZONE)
 
-    return calendar.timegm(resdt.timetuple())
+    dt_naive = datetime.datetime.utcfromtimestamp(ts)  # no tz
+    dt_utc = dt_naive.replace(tzinfo=tz_utc)
+    dt_local = dt_utc.astimezone(tz_local)
+
+    resdt_naive = dt_local.replace(tzinfo=None) - datetime.timedelta(days=days)
+    resdt_local = tz_local.localize(resdt_naive)
+    resdt_utc = resdt_local.astimezone(tz_utc)
+
+    log.info('[AtsdReader] ' + str(dt_local) + ' - ' + str(days) + 'days = ' + str(resdt_local))
+
+    return calendar.timegm(resdt_utc.timetuple())
 
 
 def _round_step(step):
@@ -536,19 +558,19 @@ class AtsdReader(object):
         elif self.default_interval['unit'] == 'MONTH':
 
             start_time = _time_minus_months(end_time,
-                                           self.default_interval['count'])
+                                            self.default_interval['count'])
             return start_time, end_time
 
         elif self.default_interval['unit'] == 'QUARTER':
 
             start_time = _time_minus_months(end_time,
-                                           self.default_interval['count'] * 3)
+                                            self.default_interval['count'] * 3)
             return start_time, end_time
 
         elif self.default_interval['unit'] == 'YEAR':
 
             start_time = _time_minus_months(end_time,
-                                           self.default_interval['count'] * 12)
+                                            self.default_interval['count'] * 12)
             return start_time, end_time
 
         else:
