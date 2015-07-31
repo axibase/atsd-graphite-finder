@@ -36,9 +36,9 @@ class AtsdFinderV(object):
         self.auth = (ATSD_CONF['username'], ATSD_CONF['password'])
             
         try:
-            self.builds =  ATSD_CONF['builds']
+            self.views =  ATSD_CONF['views']
         except:
-            self.builds = {}
+            self.views = {}
             
     def log_info(self, message):
     
@@ -71,18 +71,18 @@ class AtsdFinderV(object):
             return info
         
         try:
-            build = self.builds[tokens[0]]
+            view = self.views[tokens[0]]
         except:
             info['valid'] = False
             return info
             
-        info['build'] = tokens[0]
+        info['view'] = tokens[0]
         
         specific = ['tag', 'const']
         
         for i, token in enumerate(tokens[1:]):
         
-            level = build[i]
+            level = view[i]
             
             if 'global' in level:
                 info = self.extract_var(info, level['global'])
@@ -114,7 +114,7 @@ class AtsdFinderV(object):
                         
                         break
             
-            if token_type in ['build', 'entity', 'metric']:
+            if token_type in ['view', 'entity', 'metric']:
             
                 info[token_type] = token
                 
@@ -232,19 +232,19 @@ class AtsdFinderV(object):
                 
             if g_info['tokens'] == 0:
             
-                for build_name in self.builds:
+                for view_name in self.views:
 
-                    path = metric_quote(build_name)
+                    path = metric_quote(view_name)
                     
                     if fnmatch.fnmatch(path, pattern_match):
                         yield self.make_branch(path)
             
             else:
 
-                build = self.builds[g_info['build']]
+                view = self.views[g_info['view']]
                     
                 ind = g_info['tokens'] - 1
-                length = len(build)
+                length = len(view)
                     
                 if ind > length:
                 
@@ -252,7 +252,7 @@ class AtsdFinderV(object):
                     
                 elif ind < length and not leaf_request:
                     
-                    level = build[g_info['tokens'] - 1]
+                    level = view[g_info['tokens'] - 1]
                     self.log_info('level = ' + unicode(level))
                     
                     level_type = level['type']
