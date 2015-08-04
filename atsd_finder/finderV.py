@@ -98,16 +98,22 @@ class AtsdFinderV(object):
                 token = token[token.find(']')+2:]
             else:
                 prefix = ''
+
+            if 'local' in level:
+                info = self.extract_var(info, level['local'])
             
             if token_type == 'collection':
             
                 for desc in level['value']:
                 
                     is_leaf = desc['is leaf'] if 'is leaf' in desc else False
-                    desc_prefix = desc['prefix'] if 'prefix' in  desc else ''
+                    desc_prefix = desc['prefix'] if 'prefix' in desc else ''
                     
                     if (is_leaf == leaf_request or i != info['tokens'] - 1) \
                        and prefix == desc_prefix:
+
+                        if 'local' in desc:
+                            info = self.extract_var(info, desc['local'])
                     
                         token_type = desc['type']
                         token_desc = desc['value']
@@ -168,6 +174,7 @@ class AtsdFinderV(object):
                     tag_value = token_value[tag_name]
                     info['tags'][tag_name] = tag_value
                         
+        self.log_info(unicode(info) + ' ' + unicode(scope))
         return info
         
     def make_branch(self, path):
@@ -257,8 +264,6 @@ class AtsdFinderV(object):
                     
                     level_type = level['type']
                     level_value = level['value']
-                    
-                    specific = ['tag', 'const']
                     
                     if 'global' in level:
                         g_info = self.extract_var(g_info, level['global'])
