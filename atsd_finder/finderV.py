@@ -105,7 +105,7 @@ class AtsdFinderV(object):
                     desc_prefix = desc['prefix'] if 'prefix' in desc else ''
 
                     if (is_leaf == leaf_request or i != info['tokens'] - 1) \
-                        and prefix == desc_prefix:
+                            and prefix == desc_prefix:
 
                         if 'global' in desc:
                             info = self.extract_var(info, desc['global'])
@@ -147,6 +147,33 @@ class AtsdFinderV(object):
                             info[token_type] = time_dict
                         else:
                             info[token_type] = None
+
+                        break
+
+        if leaf_request:
+
+            token = tokens[-1]
+            level = view[len(tokens) - 2]
+
+            if token[0] == '[' and ']' in  token:
+                prefix = token[token.find('[')+1:token.find(']')]
+            else:
+                prefix = ''
+
+            if 'local' in level:
+                info = self.extract_var(info, level['local'])
+
+            if level['type'] == 'collection':
+
+                for desc in level['value']:
+
+                    is_leaf = desc['is leaf'] if 'is leaf' in desc else False
+                    desc_prefix = desc['prefix'] if 'prefix' in desc else ''
+
+                    if is_leaf and prefix == desc_prefix:
+
+                        if 'local' in desc:
+                            info = self.extract_var(info, desc['local'])
 
                         break
 
@@ -310,7 +337,7 @@ class AtsdFinderV(object):
                                 folder = folder_dict.keys()[0]
 
                                 if token_type not in info \
-                                   or token_type in info and fnmatch.fnmatch(folder, info[token_type]):
+                                        or token_type in info and fnmatch.fnmatch(folder, info[token_type]):
 
                                     path = pattern + '.' + metric_quote(prefix + folder_dict[folder])
 
