@@ -1,6 +1,3 @@
-import requests
-import json
-import urlparse
 import ConfigParser
 import fnmatch
 import re
@@ -16,10 +13,12 @@ from graphite.intervals import Interval, IntervalSet
 try:
     from graphite.logger import log
     from django.conf import settings
+    from graphite.readers import FetchInProgress
 except:  # debug env
     from graphite import settings
     import default_logger as log
-    log.info('running in debug environment')
+    from test import FetchInProgress
+    log.info('reader running in debug environment')
 
 
 # statistics applicable for aggregate, but not for group
@@ -356,9 +355,9 @@ class Instance(object):
     series unique identifier
     """
 
-    __slots__ = ('entity_name', 'metric_name', 'tags', '_session', '_context')
+    __slots__ = ('entity_name', 'metric_name', 'tags', '_client')
 
-    def __init__(self, entity_name, metric_name, tags):
+    def __init__(self, entity_name, metric_name, tags, client):
         #: `str`
         self.entity_name = entity_name
         #: `str`
@@ -366,48 +365,7 @@ class Instance(object):
         #: `dict`
         self.tags = tags
         #: :class:`.Session`
-        self._session = requests.Session()
-        self._session.auth = (settings.ATSD_CONF['username'],
-                              settings.ATSD_CONF['password'])
-        #: `str` api path
-        self._context = urlparse.urljoin(settings.ATSD_CONF['url'], 'api/v1/')
-
-    def _request(self, method, path, data=None):
-        """
-        :param method: `str`
-        :param path: `str` url after 'api/v1'
-        :param data: `dict` or `list` json body of request
-        :return: `dict` or `list` response.json()
-        :raises RuntimeError: server response not 200
-        """
-
-        request = requests.Request(
-            method=method,
-            url=urlparse.urljoin(self._context, path),
-            data=json.dumps(data)
-        )
-
-        # print '============request=========='
-        # print '>>>method:', request.method
-        # print '>>>path:', request.url
-        # print '>>>data:', request.data
-        # print '>>>params:', request.params
-        # print '============================='
-
-        prepared_request = self._session.prepare_request(request)
-        response = self._session.send(prepared_request)
-
-        # print '===========response=========='
-        # print '>>>status:', response.status_code
-        # print '>>>cookies:', response.cookies.items()
-        # print '>>>content:', response.text
-        # print '============================='
-
-        if response.status_code != 200:
-            raise RuntimeError('server response status_code={:d} {:s}'
-                               .format(response.status_code, response.text))
-
-        return response.json()
+        self._client = client
 
     def query_series(self, start_time, end_time, aggregator):
         """
@@ -449,7 +407,7 @@ class Instance(object):
             else:
                 data['queries'][0]['group'] = aggregator.json()
 
-        resp = self._request('POST', 'series', data)
+        resp = self._client.request('POST', 'series', data)
 
         return resp['series'][0]['data']
 
@@ -459,8 +417,8 @@ class Instance(object):
         :return: parsed json response
         """
 
-        return self._request('GET',
-                             'metrics/' + utils.quote(self.metric_name))
+        return self._client.request('GET',
+                                    'metrics/' + utils.quote(self.metric_name))
 
     def get_entity(self):
         """make meta api request
@@ -468,8 +426,8 @@ class Instance(object):
         :return: parsed json response
         """
 
-        return self._request('GET',
-                             'entities/' + utils.quote(self.entity_name))
+        return self._client.request('GET',
+                                    'entities/' + utils.quote(self.entity_name))
 
 
 class AtsdReader(object):
@@ -478,10 +436,17 @@ class AtsdReader(object):
                  '_interval_schema',
                  'default_interval')
 
-    def __init__(self, entity, metric, tags,
+    def __init__(self, client, entity, metric, tags,
                  default_interval=None, aggregator=None):
+
+        reader_inf = 'aggregator: ' + str(aggregator) + ', pid: ' + str(os.getpid())
+        try:
+            log.info(reader_inf + ', ppid: ' + str(os.getppid()))
+        except AttributeError:
+            log.info(reader_inf + ', [warning] ppid not available')
+
         #: :class: `.Node`
-        self._instance = Instance(entity, metric, tags)
+        self._instance = Instance(entity, metric, tags, client)
 
         if aggregator and aggregator.type == 'DETAIL':
             aggregator = None
@@ -505,11 +470,20 @@ class AtsdReader(object):
                  + ' interval=' + unicode(default_interval))
 
     def fetch(self, start_time, end_time):
+        return FetchInProgress(lambda: self._fetch(start_time, end_time))
+
+    def _fetch(self, start_time, end_time):
         """fetch time series
 
         :param start_time: `Number` seconds
         :param end_time: `Number` seconds
         """
+
+        reader_inf = 'aggregator: ' + str(self.aggregator) + ', pid: ' + str(os.getpid())
+        try:
+            log.info(reader_inf + ', ppid: ' + str(os.getppid()))
+        except AttributeError:
+            log.info(reader_inf + ', [warning] ppid not available')
 
         if self.default_interval:
             start_time = _time_minus_interval(end_time, self.default_interval)
