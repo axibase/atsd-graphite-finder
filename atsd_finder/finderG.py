@@ -60,6 +60,8 @@ class AtsdFinderG(object):
             metric = metric_entity[0]
             entity = metric_entity[1]
 
+        metric = 'graphite_' + metric
+
         reader = AtsdReader(self._client, entity, metric, {}, None)
 
         self.log_info('Leaf path = ' + path)
