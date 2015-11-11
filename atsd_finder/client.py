@@ -1,6 +1,7 @@
 import requests
 import urlparse
 import json
+import random
 
 try:
     from graphite.logger import log
@@ -23,7 +24,7 @@ NON_GROUP_STATS = ('FIRST',
                    'THRESHOLD_PERCENT')
 
 
-class Client(object):
+class AtsdClient(object):
     __slots__ = ('_queries', '_responses', '_session', '_context')
 
     def __init__(self):
@@ -98,7 +99,8 @@ class Client(object):
                  'endTime': int(end_time * 1000),
                  'entity': instance.entity_name,
                  'metric': instance.metric_name,
-                 'tags': tags_query}
+                 'tags': tags_query,
+                 'requestId': random.randint(0, 999999)}
 
         if aggregator and aggregator.type != 'DETAIL':
             # request regularized data
@@ -110,4 +112,7 @@ class Client(object):
             else:
                 query['group'] = aggregator.json()
 
-        return FetchInProgress(lambda: self.request('POST', 'series', {'queries': [query]}))
+        return FetchInProgress(lambda: self._get_query_response(query))
+
+    def _get_query_response(self, query):
+        return self.request('POST', 'series', {'queries': [query]})

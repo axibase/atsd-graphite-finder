@@ -10,6 +10,7 @@ from graphite.local_settings import ATSD_CONF
 from .utils import quote, metric_quote, unquote
 
 from .reader import AtsdReader, Aggregator
+from .client import AtsdClient
 try:
     from graphite.logger import log
 except:
@@ -23,6 +24,8 @@ class AtsdFinderV(object):
     def __init__(self):
 
         self.name = '[AtsdFinderV]'
+
+        self._client = AtsdClient()
 
         try:
             # noinspection PyUnresolvedReferences
@@ -214,13 +217,13 @@ class AtsdFinderV(object):
         tags = info['tags']
         interval = info['interval'] if 'interval' in info else None
 
-        if not 'period' in info or info['period'] == None:
-            reader = AtsdReader(entity, metric, tags, interval)
+        if not 'period' in info or info['period'] is None:
+            reader = AtsdReader(self._client, entity, metric, tags, interval)
         else:
             period_count = info['period']['count']
             period_unit = info['period']['unit']
             aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
-            reader = AtsdReader(entity, metric, tags, interval,
+            reader = AtsdReader(self._client, entity, metric, tags, interval,
                                 Aggregator(aggregator, period_count, period_unit))
 
         return LeafNode(path, reader)

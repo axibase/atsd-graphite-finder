@@ -2,11 +2,11 @@ import unittest
 import time
 import atsd_finder
 from atsd_finder.reader import Aggregator
-from atsd_finder.client import Client
+from atsd_finder.client import AtsdClient
 
 
 class TestReaderFetch(unittest.TestCase):
-    client = Client()
+    client = AtsdClient()
 
     def test_interval_schema(self):
         now = time.time()
@@ -105,7 +105,7 @@ class TestReaderFetch(unittest.TestCase):
 
 
 class TestReader(unittest.TestCase):
-    client = Client()
+    client = AtsdClient()
 
     def test_get_intervals(self):
         reader = atsd_finder.AtsdReader(self.client,
@@ -149,6 +149,6 @@ class TestFinder(unittest.TestCase):
 class TestClient(unittest.TestCase):
 
     def test_request(self):
-        client = Client()
+        client = AtsdClient()
         resp = client.request('GET', 'metrics/cpu_busy')
         self.assertEqual(resp['name'], 'cpu_busy')
