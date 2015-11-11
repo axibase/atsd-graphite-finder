@@ -77,6 +77,7 @@ class AtsdFinderG(object):
 
             response = requests.get(url, auth=self.auth)
             self.log_info('status = ' + unicode(response.status_code))
+            self.log_info('status = ' + unicode(response.json()))
 
             for metric in response.json()['metrics']:
 
