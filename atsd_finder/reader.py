@@ -17,7 +17,7 @@ except:  # debug env
     from graphite import settings
     import default_logger as log
     from sample import FetchInProgress
-    log.info('reader running in debug environment')
+    log.info('[AtsdReader] reader running in debug environment')
 
 
 def _time_minus_months(ts, months):
@@ -384,7 +384,7 @@ class Instance(object):
             else:
                 time_info, values = _regularize(series)
 
-            log.info('[AtsdReader] fetched {0} values, time_info={1}:{2}:{3}'
+            log.info('[reader.Instance] fetched {0} values, time_info={1}:{2}:{3}'
                      .format(len(values), time_info[0], time_info[2], time_info[1]))
 
             return time_info, values

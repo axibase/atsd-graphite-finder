@@ -50,14 +50,14 @@ class QueryStorage(object):
         try:
             id_ = response['requestId']
         except KeyError:
-            log.info('response without requestId: ' + unicode(response))
+            log.info('[QueryStorage] response without requestId: ' + unicode(response))
             return False
 
         if id_ in self._queries:
             self._responses[id_] = response
             return True
 
-        log.info('no query for response: ' + unicode(response))
+        log.info('[QueryStorage] no query for response: ' + unicode(response))
         return False
 
     def add_query(self, query):
@@ -206,7 +206,7 @@ class AtsdClient(object):
         data = {'queries': queries}
 
         responses = self.request('POST', 'series', data)['series']
-        log.info('batch request, length=' + str(len(queries)))
+        log.info('[AtsdClient] batch request, length=' + str(len(queries)))
 
         for resp in responses:
             self._query_storage.add_response(resp)
