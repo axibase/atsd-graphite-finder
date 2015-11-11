@@ -63,14 +63,17 @@ class TestReaderFetch(unittest.TestCase):
                                         'cpu_busy',
                                         {},
                                         aggregator=Aggregator('MIN', 60 * 60, 'SECOND'))
-        _, values_min = reader.fetch(now - 60 * 61, now).waitForResults()
+        res_min = reader.fetch(now - 60 * 61, now)
 
         reader = atsd_finder.AtsdReader(self.client,
                                         'nurswgvml006',
                                         'cpu_busy',
                                         {},
                                         aggregator=Aggregator('MAX', 60 * 60, 'SECOND'))
-        _, values_max = reader.fetch(now - 60 * 61, now).waitForResults()
+        res_max = reader.fetch(now - 60 * 61, now)
+
+        _, values_min = res_min.waitForResults()
+        _, values_max = res_max.waitForResults()
 
         print values_max[0], values_min[0]
         self.assertGreater(values_max[0], values_min[0])

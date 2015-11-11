@@ -24,8 +24,79 @@ NON_GROUP_STATS = ('FIRST',
                    'THRESHOLD_PERCENT')
 
 
+class QueryStorage(object):
+    """store queries and responses for them
+    each query has unique id, stored in requestId attr
+
+    """
+
+    def __init__(self):
+        self._queries = {}
+        self._responses = {}
+
+    def get_waiting_queries(self):
+        waiting_queries = []
+        for id_ in self._queries:
+            if not id_ in self._responses:
+                waiting_queries.append(self._queries[id_])
+
+        return waiting_queries
+
+    def add_response(self, response):
+        """add response for existing query
+
+        :param response: json
+        """
+        try:
+            id_ = response['requestId']
+        except KeyError:
+            log.info('response without requestId: ' + unicode(response))
+            return False
+
+        if id_ in self._queries:
+            self._responses[id_] = response
+            return True
+
+        log.info('no query for response: ' + unicode(response))
+        return False
+
+    def add_query(self, query):
+        """
+        :param query:  json
+        """
+        id_ = str(random.randint(0, 999999))
+        while id_ in self._queries:
+            id_ = str(random.randint(0, 999999))
+
+        query['requestId'] = str(id_)
+
+        self._queries[id_] = query
+
+        return id_
+
+    def pop_response(self, query):
+        """return and remove query entry, or return None if no response exists
+
+        :param query: json
+        :return: response or None
+        :raises KeyError: if no such query
+        """
+
+        try:
+            id_ = query['requestId']
+        except KeyError:
+            raise KeyError('no such query to get response')
+
+        if id_ in self._responses:
+            resp = self._responses[id_]
+            del self._responses[id_]
+            del self._queries[id_]
+            return resp
+        else:
+            return None
+
+
 class AtsdClient(object):
-    __slots__ = ('_queries', '_responses', '_session', '_context')
 
     def __init__(self):
         #: :class:`.Session`
@@ -35,10 +106,7 @@ class AtsdClient(object):
         #: `str` api path
         self._context = urlparse.urljoin(settings.ATSD_CONF['url'], 'api/v1/')
 
-        #: `set` of strings
-        self._queries = set()
-        #: `dict`
-        self._responses = {}
+        self._query_storage = QueryStorage()
 
     def request(self, method, path, data=None):
         """
@@ -99,8 +167,7 @@ class AtsdClient(object):
                  'endTime': int(end_time * 1000),
                  'entity': instance.entity_name,
                  'metric': instance.metric_name,
-                 'tags': tags_query,
-                 'requestId': random.randint(0, 999999)}
+                 'tags': tags_query}
 
         if aggregator and aggregator.type != 'DETAIL':
             # request regularized data
@@ -112,7 +179,34 @@ class AtsdClient(object):
             else:
                 query['group'] = aggregator.json()
 
-        return FetchInProgress(lambda: self._get_query_response(query))
+        self._query_storage.add_query(query)
+        return FetchInProgress(lambda: self._get_response(query))
 
-    def _get_query_response(self, query):
-        return self.request('POST', 'series', {'queries': [query]})
+    def _get_response(self, query):
+        """search response in _query_storage if not found make request
+
+        :param query: json
+        :return: json
+        :raises KeyError: no such query in storage
+        """
+
+        response = self._query_storage.pop_response(query)
+
+        if response is None:
+            self._request_series()
+            return self._query_storage.pop_response(query)
+
+        return response
+
+    def _request_series(self):
+        """create batch request with queries in storage,
+        add responses to storage
+        """
+        queries = self._query_storage.get_waiting_queries()
+        data = {'queries': queries}
+
+        responses = self.request('POST', 'series', data)['series']
+        log.info('batch request, length=' + str(len(queries)))
+
+        for resp in responses:
+            self._query_storage.add_response(resp)

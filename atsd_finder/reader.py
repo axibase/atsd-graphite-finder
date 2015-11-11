@@ -360,14 +360,14 @@ class Instance(object):
         :param start_time: `Number` seconds
         :param end_time: `Number` seconds
         :param aggregator: :class:`.Aggregator` | None
-        :return: (start, end, step), [values]
+        :return: :class: `.FetchInProgress` <(start, end, step), [values]>
         """
 
         future = self._client.query_series(self, start_time, end_time, aggregator)
 
         def get_formatted_series():
             resp = future.waitForResults()
-            series = resp['series'][0]['data']
+            series = resp['data']
 
             if not len(series):
                 return (start_time, end_time, end_time - start_time), [None]
@@ -486,6 +486,7 @@ class AtsdReader(object):
 
         log.info('[AtsdReader] getting_intervals')
 
+        # FIXME: metric not available in tests
         metric = self._instance.get_metric()
         try:
             entity = self._instance.get_entity()
