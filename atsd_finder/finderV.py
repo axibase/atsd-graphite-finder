@@ -23,8 +23,6 @@ class AtsdFinderV(object):
 
     def __init__(self):
 
-        self.name = '[AtsdFinderV]'
-
         self._client = AtsdClient()
 
         try:
