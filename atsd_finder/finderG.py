@@ -78,9 +78,7 @@ class AtsdFinderG(object):
             response = requests.get(url, auth=self.auth)
             self.log_info('status = ' + unicode(response.status_code))
 
-            response = { "metrics": [] }
-
-            for metric in response['metrics']:  # response.json()['metrics']:
+            for metric in response.json()['metrics']:
 
                 if metric['is_leaf'] == 0:
                     yield self._make_branch(metric['path'][0:-1])
