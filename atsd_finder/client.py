@@ -10,6 +10,17 @@ except:  # debug env
     import default_logger as log
 
 
+# statistics applicable for aggregate, but not for group
+NON_GROUP_STATS = ('FIRST',
+                   'LAST',
+                   'DELTA',
+                   'WAVG',
+                   'WTAVG',
+                   'THRESHOLD_COUNT',
+                   'THRESHOLD_DURATION',
+                   'THRESHOLD_PERCENT')
+
+
 class Client(object):
 
     def __init__(self):
@@ -56,3 +67,47 @@ class Client(object):
                                .format(response.status_code, response.text))
 
         return response.json()
+
+    def query_series(self, instance, start_time, end_time, aggregator):
+        """
+        :param instance: :class:`.Instance`
+        :param start_time: `Number` seconds
+        :param end_time: `Number` seconds
+        :param aggregator: :class:`.Aggregator` | None
+        :return: series json
+        """
+
+        if aggregator and aggregator.unit == 'SECOND':
+            step = aggregator.count
+            start_time = (start_time // step) * step
+            end_time = (end_time // step + 1) * step
+
+        tags_query = {}
+        for key in instance.tags:
+            tags_query[key] = [instance.tags[key]]
+
+        data = {
+            'queries': [
+                {
+                    'startTime': int(start_time * 1000),
+                    'endTime': int(end_time * 1000),
+                    'entity': instance.entity_name,
+                    'metric': instance.metric_name,
+                    'tags': tags_query
+                }
+            ]
+        }
+
+        if aggregator and aggregator.type != 'DETAIL':
+            # request regularized data
+            if aggregator.type in NON_GROUP_STATS:
+                data['queries'][0]['group'] = {"type": "SUM",
+                                               "interval": {
+                                                   "count": aggregator.count,
+                                                   "unit": aggregator.unit}}
+                data['queries'][0]['aggregate'] = aggregator.json()
+            else:
+                data['queries'][0]['group'] = aggregator.json()
+
+        return self.request('POST', 'series', data)
+

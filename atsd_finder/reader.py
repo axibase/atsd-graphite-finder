@@ -2,7 +2,6 @@ import ConfigParser
 import fnmatch
 import re
 import os
-
 import datetime
 import calendar
 import pytz
@@ -17,19 +16,8 @@ try:
 except:  # debug env
     from graphite import settings
     import default_logger as log
-    from test import FetchInProgress
+    from sample import FetchInProgress
     log.info('reader running in debug environment')
-
-
-# statistics applicable for aggregate, but not for group
-NON_GROUP_STATS = ('FIRST',
-                   'LAST',
-                   'DELTA',
-                   'WAVG',
-                   'WTAVG',
-                   'THRESHOLD_COUNT',
-                   'THRESHOLD_DURATION',
-                   'THRESHOLD_PERCENT')
 
 
 def _time_minus_months(ts, months):
@@ -367,49 +355,36 @@ class Instance(object):
         #: :class:`.Session`
         self._client = client
 
-    def query_series(self, start_time, end_time, aggregator):
+    def get_series(self, start_time, end_time, aggregator):
         """
         :param start_time: `Number` seconds
         :param end_time: `Number` seconds
         :param aggregator: :class:`.Aggregator` | None
-        :return: series data [{t,v}]
+        :return: (start, end, step), [values]
         """
 
+        resp = self._client.query_series(self, start_time, end_time, aggregator)
+        series = resp['series'][0]['data']
+
+        if not len(series):
+            return (start_time, end_time, end_time - start_time), [None]
+        if len(series) == 1:
+            return (start_time, end_time, end_time - start_time), [series[0]['v']]
+
         if aggregator and aggregator.unit == 'SECOND':
-            step = aggregator.count
-            start_time = (start_time // step) * step
-            end_time = (end_time // step + 1) * step
+            # data regularized, send as is
+            time_info = (float(series[0]['t']) / 1000,
+                         float(series[-1]['t']) / 1000 + aggregator.count,
+                         aggregator.count)
 
-        tags_query = {}
-        for key in self.tags:
-            tags_query[key] = [self.tags[key]]
+            values = [sample['v'] for sample in series]
+        else:
+            time_info, values = _regularize(series)
 
-        data = {
-            'queries': [
-                {
-                    'startTime': int(start_time * 1000),
-                    'endTime': int(end_time * 1000),
-                    'entity': self.entity_name,
-                    'metric': self.metric_name,
-                    'tags': tags_query
-                }
-            ]
-        }
+        log.info('[AtsdReader] fetched {0} values, time_info={1}:{2}:{3}'
+                 .format(len(values), time_info[0], time_info[2], time_info[1]))
 
-        if aggregator and aggregator.type != 'DETAIL':
-            # request regularized data
-            if aggregator.type in NON_GROUP_STATS:
-                data['queries'][0]['group'] = {"type": "SUM",
-                                               "interval": {
-                                                   "count": aggregator.count,
-                                                   "unit": aggregator.unit}}
-                data['queries'][0]['aggregate'] = aggregator.json()
-            else:
-                data['queries'][0]['group'] = aggregator.json()
-
-        resp = self._client.request('POST', 'series', data)
-
-        return resp['series'][0]['data']
+        return time_info, values
 
     def get_metric(self):
         """make meta api request
@@ -470,13 +445,11 @@ class AtsdReader(object):
                  + ' interval=' + unicode(default_interval))
 
     def fetch(self, start_time, end_time):
-        return FetchInProgress(lambda: self._fetch(start_time, end_time))
-
-    def _fetch(self, start_time, end_time):
         """fetch time series
 
         :param start_time: `Number` seconds
         :param end_time: `Number` seconds
+        :return: (start, end, step), [values]
         """
 
         reader_inf = 'aggregator: ' + str(self.aggregator) + ', pid: ' + str(os.getpid())
@@ -499,31 +472,9 @@ class AtsdReader(object):
             aggregator = self._interval_schema.aggregator(end_time, start_time,
                                                           self.default_interval)
 
-        series = self._instance.query_series(start_time,
-                                             end_time,
-                                             aggregator)
-
-        log.info('[AtsdReader] get series of {:d} samples'.format(len(series)))
-
-        if not len(series):
-            return (start_time, end_time, end_time - start_time), [None]
-        if len(series) == 1:
-            return (start_time, end_time, end_time - start_time), [series[0]['v']]
-
-        if aggregator and aggregator.unit == 'SECOND':
-            # data regularized, send as is
-            time_info = (float(series[0]['t']) / 1000,
-                         float(series[-1]['t']) / 1000 + aggregator.count,
-                         aggregator.count)
-
-            values = [sample['v'] for sample in series]
-        else:
-            time_info, values = _regularize(series)
-
-        log.info('[AtsdReader] fetched {0} values, time_info={1}:{2}:{3}'
-                 .format(len(values), time_info[0], time_info[2], time_info[1]))
-
-        return time_info, values
+        return FetchInProgress(lambda: self._instance.get_series(start_time,
+                                                                 end_time,
+                                                                 aggregator))
 
     def get_intervals(self):
         """

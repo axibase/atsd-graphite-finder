@@ -5,14 +5,6 @@ from atsd_finder.reader import Aggregator
 from atsd_finder.client import Client
 
 
-class FetchInProgress(object):
-    def __init__(self, wait_callback):
-        self.wait_callback = wait_callback
-
-    def waitForResults(self):
-        return self.wait_callback()
-
-
 class TestReaderFetch(unittest.TestCase):
     client = Client()
 
