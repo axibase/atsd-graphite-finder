@@ -25,8 +25,6 @@ class AtsdFinder(object):
     period_names = ['1 sec', '1 min', '1 hour', '1 day']
 
     def __init__(self):
-    
-        self.name = '[AtsdFinder]'
 
         try:
             # noinspection PyUnresolvedReferences

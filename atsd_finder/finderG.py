@@ -22,8 +22,6 @@ class AtsdFinderG(object):
 
         self._client = AtsdClient()
 
-        self.name = '[AtsdFinderG]'
-
         try:
             # noinspection PyUnresolvedReferences
             self.pid = unicode(os.getppid()) + ':' + unicode(os.getpid())
