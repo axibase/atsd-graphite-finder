@@ -355,7 +355,7 @@ class Instance(object):
         #: :class:`.Session`
         self._client = client
 
-    def get_series(self, start_time, end_time, aggregator):
+    def fetch_series(self, start_time, end_time, aggregator):
         """
         :param start_time: `Number` seconds
         :param end_time: `Number` seconds
@@ -363,28 +363,33 @@ class Instance(object):
         :return: (start, end, step), [values]
         """
 
-        resp = self._client.query_series(self, start_time, end_time, aggregator)
-        series = resp['series'][0]['data']
+        future = self._client.query_series(self, start_time, end_time, aggregator)
 
-        if not len(series):
-            return (start_time, end_time, end_time - start_time), [None]
-        if len(series) == 1:
-            return (start_time, end_time, end_time - start_time), [series[0]['v']]
+        def get_formatted_series():
+            resp = future.waitForResults()
+            series = resp['series'][0]['data']
 
-        if aggregator and aggregator.unit == 'SECOND':
-            # data regularized, send as is
-            time_info = (float(series[0]['t']) / 1000,
-                         float(series[-1]['t']) / 1000 + aggregator.count,
-                         aggregator.count)
+            if not len(series):
+                return (start_time, end_time, end_time - start_time), [None]
+            if len(series) == 1:
+                return (start_time, end_time, end_time - start_time), [series[0]['v']]
 
-            values = [sample['v'] for sample in series]
-        else:
-            time_info, values = _regularize(series)
+            if aggregator and aggregator.unit == 'SECOND':
+                # data regularized, send as is
+                time_info = (float(series[0]['t']) / 1000,
+                             float(series[-1]['t']) / 1000 + aggregator.count,
+                             aggregator.count)
 
-        log.info('[AtsdReader] fetched {0} values, time_info={1}:{2}:{3}'
-                 .format(len(values), time_info[0], time_info[2], time_info[1]))
+                values = [sample['v'] for sample in series]
+            else:
+                time_info, values = _regularize(series)
 
-        return time_info, values
+            log.info('[AtsdReader] fetched {0} values, time_info={1}:{2}:{3}'
+                     .format(len(values), time_info[0], time_info[2], time_info[1]))
+
+            return time_info, values
+
+        return FetchInProgress(get_formatted_series)
 
     def get_metric(self):
         """make meta api request
@@ -449,7 +454,7 @@ class AtsdReader(object):
 
         :param start_time: `Number` seconds
         :param end_time: `Number` seconds
-        :return: (start, end, step), [values]
+        :return: :class:`.FetchInProgress`
         """
 
         reader_inf = 'aggregator: ' + str(self.aggregator) + ', pid: ' + str(os.getpid())
@@ -472,9 +477,7 @@ class AtsdReader(object):
             aggregator = self._interval_schema.aggregator(end_time, start_time,
                                                           self.default_interval)
 
-        return FetchInProgress(lambda: self._instance.get_series(start_time,
-                                                                 end_time,
-                                                                 aggregator))
+        return self._instance.fetch_series(start_time, end_time, aggregator)
 
     def get_intervals(self):
         """

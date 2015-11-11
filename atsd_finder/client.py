@@ -5,9 +5,11 @@ import json
 try:
     from graphite.logger import log
     from django.conf import settings
+    from graphite.readers import FetchInProgress
 except:  # debug env
     from graphite import settings
     import default_logger as log
+    from sample import FetchInProgress
 
 
 # statistics applicable for aggregate, but not for group
@@ -22,6 +24,7 @@ NON_GROUP_STATS = ('FIRST',
 
 
 class Client(object):
+    __slots__ = ('_queries', '_responses', '_session', '_context')
 
     def __init__(self):
         #: :class:`.Session`
@@ -30,6 +33,11 @@ class Client(object):
                               settings.ATSD_CONF['password'])
         #: `str` api path
         self._context = urlparse.urljoin(settings.ATSD_CONF['url'], 'api/v1/')
+
+        #: `set` of strings
+        self._queries = set()
+        #: `dict`
+        self._responses = {}
 
     def request(self, method, path, data=None):
         """
@@ -74,7 +82,7 @@ class Client(object):
         :param start_time: `Number` seconds
         :param end_time: `Number` seconds
         :param aggregator: :class:`.Aggregator` | None
-        :return: series json
+        :return: :class: `.FetchInProgress` <series json>
         """
 
         if aggregator and aggregator.unit == 'SECOND':
@@ -86,28 +94,20 @@ class Client(object):
         for key in instance.tags:
             tags_query[key] = [instance.tags[key]]
 
-        data = {
-            'queries': [
-                {
-                    'startTime': int(start_time * 1000),
-                    'endTime': int(end_time * 1000),
-                    'entity': instance.entity_name,
-                    'metric': instance.metric_name,
-                    'tags': tags_query
-                }
-            ]
-        }
+        query = {'startTime': int(start_time * 1000),
+                 'endTime': int(end_time * 1000),
+                 'entity': instance.entity_name,
+                 'metric': instance.metric_name,
+                 'tags': tags_query}
 
         if aggregator and aggregator.type != 'DETAIL':
             # request regularized data
             if aggregator.type in NON_GROUP_STATS:
-                data['queries'][0]['group'] = {"type": "SUM",
-                                               "interval": {
-                                                   "count": aggregator.count,
-                                                   "unit": aggregator.unit}}
-                data['queries'][0]['aggregate'] = aggregator.json()
+                query['group'] = {"type": "SUM",
+                                  "interval": {"count": aggregator.count,
+                                               "unit": aggregator.unit}}
+                query['aggregate'] = aggregator.json()
             else:
-                data['queries'][0]['group'] = aggregator.json()
+                query['group'] = aggregator.json()
 
-        return self.request('POST', 'series', data)
-
+        return FetchInProgress(lambda: self.request('POST', 'series', {'queries': [query]}))
