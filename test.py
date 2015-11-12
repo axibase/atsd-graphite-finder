@@ -148,6 +148,9 @@ class TestFinder(unittest.TestCase):
     def test_finderV(self):
         atsd_finder.AtsdFinderV()
 
+    def test_finderG(self):
+        atsd_finder.AtsdFinderG()
+
 
 class TestClient(unittest.TestCase):
 

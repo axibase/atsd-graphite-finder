@@ -416,10 +416,11 @@ class AtsdReader(object):
                  'aggregator',
                  '_interval_schema',
                  'default_interval',
+                 'retention_interval',
                  '_pid')
 
-    def __init__(self, client, entity, metric, tags,
-                 default_interval=None, aggregator=None):
+    def __init__(self, client, entity, metric, tags, default_interval=None,
+                 aggregator=None, retention_interval=None):
 
         #: :class: `.Node`
         self._instance = Instance(entity, metric, tags, client)
@@ -438,8 +439,11 @@ class AtsdReader(object):
         #: {unit: `str`, count: `Number`} | None
         self.default_interval = default_interval
 
+        #: (start: `Number`, end: `Number`)
+        self.retention_interval = retention_interval
+
         #: `str` process info
-        self._pid = str(os.getppid())
+        self._pid = str(os.getpid())
 
         log.info('[AtsdReader] init: entity=' + unicode(entity)
                  + ' metric=' + unicode(metric)
@@ -477,9 +481,11 @@ class AtsdReader(object):
         :return: :class:`.IntervalSet`
         """
 
-        log.info('[AtsdReader ' + self._pid + '] getting_intervals')
+        if self.retention_interval:
+            log.info('[AtsdReader ' + self._pid + '] interval=' + str(self.retention_interval))
+            return IntervalSet([Interval(*self.retention_interval)])
 
-        # return IntervalSet([Interval(0, 1447317000)])
+        log.info('[AtsdReader ' + self._pid + '] getting_intervals')
 
         # FIXME: metric not available in tests
         metric = self._instance.get_metric()
