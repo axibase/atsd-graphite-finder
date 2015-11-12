@@ -353,8 +353,14 @@ class Instance(object):
         self.metric_name = metric_name
         #: `dict`
         self.tags = tags
-        #: :class:`.Session`
+        #: :class:`.AtsdClient`
         self._client = client
+
+    def get_retention_interval(self):
+        try:
+            return self._client.metric_intervals[self.metric_name]
+        except KeyError:
+            return None
 
     def fetch_series(self, start_time, end_time, aggregator):
         """
@@ -416,11 +422,10 @@ class AtsdReader(object):
                  'aggregator',
                  '_interval_schema',
                  'default_interval',
-                 'retention_interval',
                  '_pid')
 
     def __init__(self, client, entity, metric, tags, default_interval=None,
-                 aggregator=None, retention_interval=None):
+                 aggregator=None):
 
         #: :class: `.Node`
         self._instance = Instance(entity, metric, tags, client)
@@ -438,9 +443,6 @@ class AtsdReader(object):
             default_interval['unit'] = default_interval['unit'].upper()
         #: {unit: `str`, count: `Number`} | None
         self.default_interval = default_interval
-
-        #: (start: `Number`, end: `Number`)
-        self.retention_interval = retention_interval
 
         #: `str` process info
         self._pid = str(os.getpid())
@@ -481,11 +483,10 @@ class AtsdReader(object):
         :return: :class:`.IntervalSet`
         """
 
-        if self.retention_interval:
-            log.info('[AtsdReader ' + self._pid + '] interval=' + str(self.retention_interval))
-            return IntervalSet([Interval(*self.retention_interval)])
-
-        log.info('[AtsdReader ' + self._pid + '] getting_intervals')
+        retention_interval = self._instance.get_retention_interval()
+        if retention_interval:
+            log.info('[AtsdReader ' + self._pid + '] interval=' + str(retention_interval))
+            return IntervalSet([Interval(*retention_interval)])
 
         # FIXME: metric not available in tests
         metric = self._instance.get_metric()
@@ -498,5 +499,7 @@ class AtsdReader(object):
 
         retention = metric['retentionInterval']
         start_time = (end_time - retention) if retention else 1
+
+        log.info('[AtsdReader ' + self._pid + '] interval=' + str((start_time, end_time)))
 
         return IntervalSet([Interval(start_time, end_time)])

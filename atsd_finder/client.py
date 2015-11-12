@@ -3,6 +3,8 @@ import urlparse
 import json
 import random
 
+import utils
+
 try:
     from graphite.logger import log
     # noinspection PyUnresolvedReferences
@@ -22,6 +24,17 @@ NON_GROUP_STATS = ('FIRST',
                    'THRESHOLD_COUNT',
                    'THRESHOLD_DURATION',
                    'THRESHOLD_PERCENT')
+
+
+def _get_retention_interval(metric):
+    end = metric['lastInsertTime'] / 1000
+    days = metric['retentionInterval']
+
+    if days == 0:
+        start = 0
+    else:
+        start = end - days * 24 * 60 * 60
+    return start, end
 
 
 class QueryStorage(object):
@@ -114,6 +127,9 @@ class AtsdClient(object):
 
         self._query_storage = QueryStorage()
 
+        #: metric_name: `str` -> retention_interval: (`Number`, `Number`)
+        self.metric_intervals = {}
+
     def request(self, method, path, data=None):
         """
         :param method: `str`
@@ -187,6 +203,39 @@ class AtsdClient(object):
 
         self._query_storage.add_query(query)
         return FetchInProgress(lambda: self._get_response(query))
+
+    def query_graphite_metrics(self, query):
+        """
+        :param query: `str` dot separated metric pattern
+        :return: `json`
+        """
+        path = 'graphite?query=' + query + '&format=completer'
+
+        resp = self.request('GET', path)
+
+        self._update_intervals(resp)
+
+        return resp
+
+    def _update_intervals(self, graphite_resp):
+        """update self.metric_intervals
+
+        :param graphite_resp: `json` atsd /graphite query response
+        """
+        metric_names = set()
+        for metric in graphite_resp['metrics']:
+            if metric['is_leaf']:
+                m, _ = utils.parse_path(metric['path'])
+                metric_names.add(m)
+
+        expression = utils.quote("name in ('" + "','".join(metric_names) + "')")
+
+        metrics = self.request('GET', 'metrics?expression=' + expression)
+        log.info('update intervals for metrics {0}'
+                      .format([m['name'] for m in metrics]))
+
+        for metric in metrics:
+            self.metric_intervals[metric['name']] = _get_retention_interval(metric)
 
     def _get_response(self, query):
         """search response in _query_storage if not found make request
