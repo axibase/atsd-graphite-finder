@@ -5,13 +5,13 @@ import random
 
 try:
     from graphite.logger import log
+    # noinspection PyUnresolvedReferences
     from django.conf import settings
     from graphite.readers import FetchInProgress
 except:  # debug env
     from graphite import settings
     import default_logger as log
     from sample import FetchInProgress
-
 
 # statistics applicable for aggregate, but not for group
 NON_GROUP_STATS = ('FIRST',
@@ -37,7 +37,7 @@ class QueryStorage(object):
     def get_waiting_queries(self):
         waiting_queries = []
         for id_ in self._queries:
-            if not id_ in self._responses:
+            if id_ not in self._responses:
                 waiting_queries.append(self._queries[id_])
 
         return waiting_queries
@@ -63,7 +63,10 @@ class QueryStorage(object):
     def add_query(self, query):
         """
         :param query:  json
+        :returns: unique id for query
         """
+        log.info('[QueryStorage] add query total=' + str(len(self._queries)))
+
         id_ = str(random.randint(0, 999999))
         while id_ in self._queries:
             id_ = str(random.randint(0, 999999))
@@ -91,14 +94,17 @@ class QueryStorage(object):
             resp = self._responses[id_]
             del self._responses[id_]
             del self._queries[id_]
+
+            log.info('[QueryStorage] pop response total=' + str(len(self._responses)))
             return resp
         else:
             return None
 
 
 class AtsdClient(object):
-
     def __init__(self):
+        log.info('[AtsdClient] init')
+
         #: :class:`.Session`
         self._session = requests.Session()
         self._session.auth = (settings.ATSD_CONF['username'],
@@ -205,8 +211,14 @@ class AtsdClient(object):
         queries = self._query_storage.get_waiting_queries()
         data = {'queries': queries}
 
+        # with open('/tmp/graphite-last-query.txt', 'w') as f:
+        #     f.write(json.dumps(queries))
+
         responses = self.request('POST', 'series', data)['series']
         log.info('[AtsdClient] batch request, length=' + str(len(queries)))
+
+        # with open('/tmp/graphite-last-response.txt', 'w') as f:
+        #     f.write(json.dumps(responses))
 
         for resp in responses:
             self._query_storage.add_response(resp)

@@ -11,6 +11,7 @@ from graphite.intervals import Interval, IntervalSet
 
 try:
     from graphite.logger import log
+    # noinspection PyUnresolvedReferences
     from django.conf import settings
     from graphite.readers import FetchInProgress
 except:  # debug env
@@ -82,7 +83,7 @@ def _time_minus_days(ts, days):
 def _time_minus_interval(end_time, interval):
     """substract given interval from end_time
 
-    :param end_time:  `Number` timestamp in seconds
+    :param end_time: `Number` timestamp in seconds
     :param interval: {count: `Number`, unit: `str`}
     :return: `Number` timestamp in seconds
     """
@@ -139,7 +140,7 @@ def _median_delta(values):
 
     deltas = []
     for i in range(1, len(values)):
-        deltas.append(values[i] - values[i-1])
+        deltas.append(values[i] - values[i - 1])
 
     deltas.sort()
     return deltas[len(deltas) // 2]
@@ -414,16 +415,11 @@ class AtsdReader(object):
     __slots__ = ('_instance',
                  'aggregator',
                  '_interval_schema',
-                 'default_interval')
+                 'default_interval',
+                 '_pid')
 
     def __init__(self, client, entity, metric, tags,
                  default_interval=None, aggregator=None):
-
-        reader_inf = 'aggregator: ' + str(aggregator) + ', pid: ' + str(os.getpid())
-        try:
-            log.info(reader_inf + ', ppid: ' + str(os.getppid()))
-        except AttributeError:
-            log.info(reader_inf + ', [warning] ppid not available')
 
         #: :class: `.Node`
         self._instance = Instance(entity, metric, tags, client)
@@ -442,6 +438,9 @@ class AtsdReader(object):
         #: {unit: `str`, count: `Number`} | None
         self.default_interval = default_interval
 
+        #: `str` process info
+        self._pid = str(os.getppid())
+
         log.info('[AtsdReader] init: entity=' + unicode(entity)
                  + ' metric=' + unicode(metric)
                  + ' tags=' + unicode(tags)
@@ -457,18 +456,12 @@ class AtsdReader(object):
         :return: :class:`.FetchInProgress`
         """
 
-        reader_inf = 'aggregator: ' + str(self.aggregator) + ', pid: ' + str(os.getpid())
-        try:
-            log.info(reader_inf + ', ppid: ' + str(os.getppid()))
-        except AttributeError:
-            log.info(reader_inf + ', [warning] ppid not available')
-
         if self.default_interval:
             start_time = _time_minus_interval(end_time, self.default_interval)
 
         log.info(
-            '[AtsdReader] fetching:  start_time={0} end_time= {1}'
-            .format(start_time, end_time)
+            '[AtsdReader {2}] fetching: start_time={0} end_time={1}'
+            .format(start_time, end_time, self._pid)
         )
 
         if self.aggregator:
@@ -484,7 +477,9 @@ class AtsdReader(object):
         :return: :class:`.IntervalSet`
         """
 
-        log.info('[AtsdReader] getting_intervals')
+        log.info('[AtsdReader ' + self._pid + '] getting_intervals')
+
+        # return IntervalSet([Interval(0, 1447317000)])
 
         # FIXME: metric not available in tests
         metric = self._instance.get_metric()
