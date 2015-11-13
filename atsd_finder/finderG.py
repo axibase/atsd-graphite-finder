@@ -68,7 +68,7 @@ class AtsdFinderG(object):
         :return: `generator`<Node>
         """
 
-        self._log_info('query = ' + dict(query))
+        self._log_info('query = ' + unicode(query.__dict__))
 
         try:
 
