@@ -26,31 +26,41 @@ class AtsdFinderG(object):
         except AttributeError:
             self.pid = unicode(os.getpid())
 
-        self.log_info('init')
+        self._log_info('init')
 
-    def log_info(self, message):
+    def _log_info(self, message):
 
         log.info('[' + self.__class__.__name__ + ' ' + self.pid + '] ' + message)
 
-    def log_exc(self, message):
+    def _log_exc(self, message):
 
         log.exception('[' + self.__class__.__name__ + ' ' + self.pid + '] ' + message)
 
     def _make_branch(self, path):
 
-        self.log_info('Branch path = ' + path)
+        self._log_info('Branch path = ' + path)
 
         return BranchNode(path)
 
-    def _make_leaf(self, path):
+    def _make_leaf(self, path, series):
 
-        self.log_info('Leaf path = ' + path)
+        self._log_info('Leaf path = ' + path)
 
-        metric, entity = utils.parse_path(path)
+        if series is None:
 
-        reader = AtsdReader(self._client, entity, metric, {})
+            return LeafNode(path, None)
 
-        return LeafNode(path, reader)
+        else:
+
+            try:
+
+                reader = AtsdReader(self._client, series['entity'], series['metric'], series['tags'])
+
+                return LeafNode(path, reader)
+
+            except StandardError as e:
+
+                self._log_exc(unicode(e))
 
     def find_nodes(self, query):
         """
@@ -60,18 +70,37 @@ class AtsdFinderG(object):
 
         try:
 
-            self.log_info('query = ' + query.pattern)
+            pattern = query.pattern
+            self._log_info('query = ' + pattern)
 
-            response = self._client.query_graphite_metrics(query.pattern)
-            self.log_info('response = ' + unicode(response))
+            if pattern == '':
 
-            for metric in response['metrics']:
+                raise StopIteration
 
-                if metric['is_leaf'] == 0:
-                    yield self._make_branch(metric['path'][0:-1])
-                else:
-                    yield self._make_leaf(metric['path'])
+            elif pattern[-1] == '*':
+
+                response = self._client.query_graphite_metrics(query.pattern, False)
+                self._log_info('response = ' + unicode(response))
+
+                for metric in response['metrics']:
+
+                    if metric['is_leaf'] == 0:
+                        yield self._make_branch(metric['path'][0:-1])
+                    else:
+                        yield self._make_leaf(metric['path'], None)
+
+            else:
+
+                response = self._client.query_graphite_metrics(query.pattern, True)
+                self._log_info('response = ' + unicode(response))
+
+                for metric in response['metrics']:
+
+                    if metric['is_leaf'] == 0:
+                        yield self._make_branch(metric['path'][0:-1])
+                    else:
+                        yield self._make_leaf(metric['path'], metric['series'])
 
         except StandardError as e:
 
-            self.log_exc(unicode(e))
+            self._log_exc(unicode(e))
