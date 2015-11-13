@@ -168,8 +168,9 @@ def _regularize(series):
     start_time = ((series[0]['t'] / 1000.0) // step) * step
     end_time = ((series[-1]['t'] / 1000.0) // step + 1) * step
 
-    log.info('reqularize {0}:{1}:{2}'
-             .format(start_time, step, end_time), 'AtsdReader')
+    # log.info('regularize {0}:{1}:{2}'
+    #          .format(start_time, step, end_time), 'AtsdReader')
+
     number_points = int((end_time - start_time) // step)
 
     values = []
@@ -399,8 +400,11 @@ class Instance(object):
             else:
                 time_info, values = _regularize(series)
 
-            log.info('fetched {0} values, time_info={1}:{2}:{3}'
-                     .format(len(values), time_info[0], time_info[2], time_info[1]),
+            log.info('fetched {0} values, interval={1}:{2}, step={3}sec'
+                     .format(len(values),
+                             strf_timestamp(time_info[0]),
+                             strf_timestamp(time_info[1]),
+                             time_info[2]),
                      'AtsdReader')
 
             return time_info, values
@@ -469,7 +473,6 @@ class AtsdReader(object):
         log.info('init: entity=' + unicode(entity)
                  + ' metric=' + unicode(metric)
                  + ' tags=' + unicode(tags)
-                 + ' url=' + unicode(settings.ATSD_CONF['url'])
                  + ' aggregator=' + unicode(aggregator)
                  + ' interval=' + unicode(default_interval), self)
 
@@ -509,9 +512,9 @@ class AtsdReader(object):
             else:
                 start_time = now - retention_interval
 
-            log.info('default retention_interval=('
-                     + strf_timestamp(start_time) + ','
-                     + strf_timestamp(now) + ')', self)
+            # log.info('default retention_interval=('
+            #          + strf_timestamp(start_time) + ','
+            #          + strf_timestamp(now) + ')', self)
 
             return IntervalSet([Interval(start_time, now)])
 
@@ -527,8 +530,8 @@ class AtsdReader(object):
         retention = metric['retentionInterval'] * 24 * 60 * 60
         start_time = (end_time - retention) if retention else 1
 
-        log.info('retention_interval=('
-                 + strf_timestamp(start_time) + ','
-                 + strf_timestamp(end_time) + ')', self)
+        # log.info('retention_interval=('
+        #          + strf_timestamp(start_time) + ','
+        #          + strf_timestamp(end_time) + ')', self)
 
         return IntervalSet([Interval(start_time, end_time)])

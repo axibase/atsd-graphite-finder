@@ -73,7 +73,6 @@ class QueryCollection(object):
         :param query:  json
         :returns: unique id for query
         """
-        log.info('add query total=' + str(len(self._queries)), self)
 
         id_ = str(random.randint(0, 999999))
         while id_ in self._queries:
@@ -82,6 +81,8 @@ class QueryCollection(object):
         query['requestId'] = str(id_)
 
         self._queries[id_] = query
+
+        # log.info('add query total=' + str(len(self._queries)), self)
 
         return id_
 
@@ -103,7 +104,7 @@ class QueryCollection(object):
             del self._responses[id_]
             del self._queries[id_]
 
-            log.info('pop response total=' + str(len(self._responses)), self)
+            # log.info('pop response total=' + str(len(self._responses)), self)
             return resp
         else:
             return None
@@ -264,8 +265,9 @@ class AtsdClient(object):
         # with open('/tmp/graphite-last-query.txt', 'w') as f:
         #     f.write(json.dumps(queries))
 
+        log.info('batch request: ' + str(len(queries)) + ' queries', self)
         responses = self.request('POST', 'series', data)['series']
-        log.info('batch request, length=' + str(len(queries)), self)
+        log.info('batch response: ' + str(len(responses)) + ' series', self)
 
         # with open('/tmp/graphite-last-response.txt', 'w') as f:
         #     f.write(json.dumps(responses))
