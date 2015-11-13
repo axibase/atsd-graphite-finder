@@ -210,7 +210,8 @@ class AtsdClient(object):
 
         resp = self.request('GET', path)
 
-        self._update_intervals(resp)
+        if series:
+            self._update_intervals(resp)
 
         return resp
 
@@ -221,8 +222,8 @@ class AtsdClient(object):
         """
         metric_names = set()
         for metric in graphite_resp['metrics']:
-            if metric['is_leaf']:
-                m, _ = utils.parse_path(metric['path'])
+            if metric['is_leaf'] == 1:
+                m = metric['series']['metric']
                 metric_names.add(m)
 
         expression = utils.quote("name in ('" + "','".join(metric_names) + "')")
