@@ -15,8 +15,6 @@ class AtsdFinderG(object):
 
     def __init__(self):
 
-        self._client = AtsdClient()
-
         try:
             # noinspection PyUnresolvedReferences
             self.pid = unicode(os.getppid()) + ':' + unicode(os.getpid())
@@ -39,7 +37,7 @@ class AtsdFinderG(object):
 
         return BranchNode(path)
 
-    def _make_leaf(self, path, series):
+    def _make_leaf(self, path, series, client):
 
         self._log_info('Leaf path = ' + path)
 
@@ -51,7 +49,7 @@ class AtsdFinderG(object):
 
             try:
 
-                reader = AtsdReader(self._client, series['entity'], series['metric'], series['tags'])
+                reader = AtsdReader(client, series['entity'], series['metric'], series['tags'])
 
                 return LeafNode(path, reader)
 
@@ -75,7 +73,7 @@ class AtsdFinderG(object):
 
             elif query.startTime is None:
 
-                response = self._client.query_graphite_metrics(query.pattern, False)
+                response = AtsdClient().query_graphite_metrics(query.pattern, False)
                 self._log_info('response = ' + unicode(response))
 
                 for metric in response['metrics']:
@@ -83,11 +81,13 @@ class AtsdFinderG(object):
                     if metric['is_leaf'] == 0:
                         yield self._make_branch(metric['path'][0:-1])
                     else:
-                        yield self._make_leaf(metric['path'], None)
+                        yield self._make_leaf(metric['path'], None, None)
 
             else:
 
-                response = self._client.query_graphite_metrics(query.pattern, True)
+                client = AtsdClient()
+
+                response = client.query_graphite_metrics(query.pattern, True)
                 self._log_info('response = ' + unicode(response))
 
                 for metric in response['metrics']:
@@ -95,7 +95,7 @@ class AtsdFinderG(object):
                     if metric['is_leaf'] == 0:
                         yield self._make_branch(metric['path'][0:-1])
                     else:
-                        yield self._make_leaf(metric['path'], metric['series'])
+                        yield self._make_leaf(metric['path'], metric['series'], client)
 
         except StandardError as e:
 
