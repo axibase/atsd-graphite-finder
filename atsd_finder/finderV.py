@@ -5,18 +5,17 @@ import json
 import fnmatch
 import os
 import copy
+import utils
 
 from graphite.local_settings import ATSD_CONF
 from .utils import quote, metric_quote, unquote
 
 from .reader import AtsdReader, Aggregator
 from .client import AtsdClient
-try:
-    from graphite.logger import log
-except:
-    import default_logger as log
 
 from graphite.node import BranchNode, LeafNode
+
+log = utils.get_logger()
 
 
 class AtsdFinderV(object):
@@ -43,11 +42,11 @@ class AtsdFinderV(object):
 
     def log_info(self, message):
 
-        log.info('[' + self.__class__.__name__ + ' ' + self.pid + '] ' + message)
+        log.info(message, self)
 
     def log_exc(self, message):
 
-        log.exception('[' + self.__class__.__name__ + ' ' + self.pid + '] ' + message)
+        log.exception(message, self)
 
     def get_info(self, pattern, leaf_request):
 

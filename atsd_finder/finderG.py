@@ -6,12 +6,9 @@ from .reader import AtsdReader, EmptyReader
 from .client import AtsdClient
 import utils
 
-try:
-    from graphite.logger import log
-except:
-    import default_logger as log
-
 from graphite.node import BranchNode, LeafNode
+
+log = utils.get_logger()
 
 
 class AtsdFinderG(object):
@@ -30,11 +27,11 @@ class AtsdFinderG(object):
 
     def _log_info(self, message):
 
-        log.info('[' + self.__class__.__name__ + ' ' + self.pid + '] ' + message)
+        log.info(message, self)
 
     def _log_exc(self, message):
 
-        log.exception('[' + self.__class__.__name__ + ' ' + self.pid + '] ' + message)
+        log.exception(message, self)
 
     def _make_branch(self, path):
 

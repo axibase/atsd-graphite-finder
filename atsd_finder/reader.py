@@ -10,16 +10,16 @@ import pytz
 from . import utils
 from graphite.intervals import Interval, IntervalSet
 
+log = utils.get_logger()
+
 try:
-    from graphite.logger import log
     # noinspection PyUnresolvedReferences
     from django.conf import settings
     from graphite.readers import FetchInProgress
 except:  # debug env
     from graphite import settings
-    import default_logger as log
     from sample import FetchInProgress
-    log.info('[AtsdReader] reader running in debug environment')
+    log.info('reader running in debug environment', 'AtsdReader')
 
 
 def strf_timestamp(sec):
@@ -55,8 +55,8 @@ def _time_minus_months(ts, months):
                                     dt_local.second).replace(tzinfo=tz_local)
     resdt_utc = resdt_local.astimezone(tz_utc)
 
-    log.info('[AtsdReader] {0} - {1}mon - {2}'
-             .format(dt_local, months, resdt_local))
+    log.info('{0} - {1}mon - {2}'
+             .format(dt_local, months, resdt_local), 'AtsdReader')
 
     return calendar.timegm(resdt_utc.timetuple())
 
@@ -80,7 +80,7 @@ def _time_minus_days(ts, days):
     resdt_local = tz_local.localize(resdt_naive)
     resdt_utc = resdt_local.astimezone(tz_utc)
 
-    log.info('[AtsdReader] ' + str(dt_local) + ' - ' + str(days) + 'days = ' + str(resdt_local))
+    log.info(str(dt_local) + ' - ' + str(days) + 'days = ' + str(resdt_local), 'AtsdReader')
 
     return calendar.timegm(resdt_utc.timetuple())
 
@@ -168,8 +168,8 @@ def _regularize(series):
     start_time = ((series[0]['t'] / 1000.0) // step) * step
     end_time = ((series[-1]['t'] / 1000.0) // step + 1) * step
 
-    log.info('[AtsdReader] reqularize {0}:{1}:{2}'
-             .format(start_time, step, end_time))
+    log.info('reqularize {0}:{1}:{2}'
+             .format(start_time, step, end_time), 'AtsdReader')
     number_points = int((end_time - start_time) // step)
 
     values = []
@@ -275,7 +275,7 @@ class IntervalSchema(object):
 
     _config = ConfigParser.RawConfigParser()
     _config.read(CONF_NAME)
-    log.info('[IntervalSchema] sections=' + str(_config.sections()))
+    log.info('sections=' + str(_config.sections()), 'IntervalSchema')
 
     def __init__(self, metric):
         """
@@ -303,7 +303,7 @@ class IntervalSchema(object):
 
                 except Exception as e:
                     log.exception('could not parse section {:s} in {:s}'
-                                  .format(section, IntervalSchema.CONF_NAME), e)
+                                  .format(section, IntervalSchema.CONF_NAME) + unicode(e), self)
 
         self._map = {}
 
@@ -399,8 +399,9 @@ class Instance(object):
             else:
                 time_info, values = _regularize(series)
 
-            log.info('[reader.Instance] fetched {0} values, time_info={1}:{2}:{3}'
-                     .format(len(values), time_info[0], time_info[2], time_info[1]))
+            log.info('fetched {0} values, time_info={1}:{2}:{3}'
+                     .format(len(values), time_info[0], time_info[2], time_info[1]),
+                     'AtsdReader')
 
             return time_info, values
 
@@ -465,12 +466,12 @@ class AtsdReader(object):
         #: `str` process info
         self._pid = str(os.getpid())
 
-        log.info('[AtsdReader] init: entity=' + unicode(entity)
+        log.info('init: entity=' + unicode(entity)
                  + ' metric=' + unicode(metric)
                  + ' tags=' + unicode(tags)
                  + ' url=' + unicode(settings.ATSD_CONF['url'])
                  + ' aggregator=' + unicode(aggregator)
-                 + ' interval=' + unicode(default_interval))
+                 + ' interval=' + unicode(default_interval), self)
 
     def fetch(self, start_time, end_time):
         """fetch time series
@@ -483,10 +484,9 @@ class AtsdReader(object):
         if self.default_interval:
             start_time = _time_minus_interval(end_time, self.default_interval)
 
-        log.info(
-            '[AtsdReader {2}] fetching: interval=({0}, {1})'
-            .format(strf_timestamp(start_time), strf_timestamp(end_time), self._pid)
-        )
+        log.info('fetching: interval=({0}, {1})'
+                 .format(strf_timestamp(start_time), strf_timestamp(end_time)),
+                 self)
 
         if self.aggregator:
             aggregator = self.aggregator
@@ -509,10 +509,9 @@ class AtsdReader(object):
             else:
                 start_time = now - retention_interval
 
-            log.info('[AtsdReader ' + self._pid + ']'
-                     + ' default retention_interval=('
+            log.info('default retention_interval=('
                      + strf_timestamp(start_time) + ','
-                     + strf_timestamp(now) + ')')
+                     + strf_timestamp(now) + ')', self)
 
             return IntervalSet([Interval(start_time, now)])
 
@@ -528,9 +527,8 @@ class AtsdReader(object):
         retention = metric['retentionInterval'] * 24 * 60 * 60
         start_time = (end_time - retention) if retention else 1
 
-        log.info('[AtsdReader ' + self._pid + ']'
-                 + ' retention_interval=('
+        log.info('retention_interval=('
                  + strf_timestamp(start_time) + ','
-                 + strf_timestamp(end_time) + ')')
+                 + strf_timestamp(end_time) + ')', self)
 
         return IntervalSet([Interval(start_time, end_time)])

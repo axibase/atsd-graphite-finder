@@ -5,14 +5,14 @@ import random
 
 import utils
 
+log = utils.get_logger()
+
 try:
-    from graphite.logger import log
     # noinspection PyUnresolvedReferences
     from django.conf import settings
     from graphite.readers import FetchInProgress
 except:  # debug env
     from graphite import settings
-    import default_logger as log
     from sample import FetchInProgress
 
 # statistics applicable for aggregate, but not for group
@@ -32,7 +32,7 @@ def _get_retention_interval(metric):
     return days * 24 * 60 * 60
 
 
-class QueryStorage(object):
+class QueryCollection(object):
     """store queries and responses for them
     each query has unique id, stored in requestId attr
 
@@ -58,14 +58,14 @@ class QueryStorage(object):
         try:
             id_ = response['requestId']
         except KeyError:
-            log.info('[QueryStorage] response without requestId: ' + unicode(response))
+            log.info('response without requestId: ' + unicode(response), self)
             return False
 
         if id_ in self._queries:
             self._responses[id_] = response
             return True
 
-        log.info('[QueryStorage] no query for response: ' + unicode(response))
+        log.info('no query for response: ' + unicode(response), self)
         return False
 
     def add_query(self, query):
@@ -73,7 +73,7 @@ class QueryStorage(object):
         :param query:  json
         :returns: unique id for query
         """
-        log.info('[QueryStorage] add query total=' + str(len(self._queries)))
+        log.info('add query total=' + str(len(self._queries)), self)
 
         id_ = str(random.randint(0, 999999))
         while id_ in self._queries:
@@ -103,7 +103,7 @@ class QueryStorage(object):
             del self._responses[id_]
             del self._queries[id_]
 
-            log.info('[QueryStorage] pop response total=' + str(len(self._responses)))
+            log.info('pop response total=' + str(len(self._responses)), self)
             return resp
         else:
             return None
@@ -111,7 +111,7 @@ class QueryStorage(object):
 
 class AtsdClient(object):
     def __init__(self):
-        log.info('[AtsdClient] init')
+        log.info('init', self)
 
         #: :class:`.Session`
         self._session = requests.Session()
@@ -120,7 +120,7 @@ class AtsdClient(object):
         #: `str` api path
         self._context = urlparse.urljoin(settings.ATSD_CONF['url'], 'api/v1/')
 
-        self._query_storage = QueryStorage()
+        self._query_storage = QueryCollection()
 
         #: metric_name: `str` -> retention_interval sec: `Number`
         self.metric_intervals = {}
@@ -230,10 +230,10 @@ class AtsdClient(object):
 
         # expression = utils.quote("name in ('" + "','".join(metric_names) + "')")
         #
-        # log.info('[AtsdClient] request metrics, expression=' + expression)
+        # log.info('request metrics, expression=' + expression, self)
         # metrics = self.request('GET', 'metrics?expression=' + expression)
-        # log.info('[AtsdClient] update intervals for metrics {0}'
-        #          .format([m['name'] for m in metrics]))
+        # log.info('update intervals for metrics {0}'
+        #          .format([m['name'] for m in metrics]), self)
 
         for metric in metric_names:
             self.metric_intervals[metric['name']] = 0
@@ -265,7 +265,7 @@ class AtsdClient(object):
         #     f.write(json.dumps(queries))
 
         responses = self.request('POST', 'series', data)['series']
-        log.info('[AtsdClient] batch request, length=' + str(len(queries)))
+        log.info('batch request, length=' + str(len(queries)), self)
 
         # with open('/tmp/graphite-last-response.txt', 'w') as f:
         #     f.write(json.dumps(responses))
