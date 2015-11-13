@@ -27,14 +27,9 @@ NON_GROUP_STATS = ('FIRST',
 
 
 def _get_retention_interval(metric):
-    end = metric['lastInsertTime'] / 1000
     days = metric['retentionInterval']
 
-    if days == 0:
-        start = 0
-    else:
-        start = end - days * 24 * 60 * 60
-    return start, end
+    return days * 24 * 60 * 60
 
 
 class QueryStorage(object):
@@ -127,7 +122,7 @@ class AtsdClient(object):
 
         self._query_storage = QueryStorage()
 
-        #: metric_name: `str` -> retention_interval: (`Number`, `Number`)
+        #: metric_name: `str` -> retention_interval sec: `Number`
         self.metric_intervals = {}
 
     def request(self, method, path, data=None):
@@ -232,7 +227,7 @@ class AtsdClient(object):
 
         metrics = self.request('GET', 'metrics?expression=' + expression)
         log.info('update intervals for metrics {0}'
-                      .format([m['name'] for m in metrics]))
+                 .format([m['name'] for m in metrics]))
 
         for metric in metrics:
             self.metric_intervals[metric['name']] = _get_retention_interval(metric)

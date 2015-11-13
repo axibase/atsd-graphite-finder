@@ -2,6 +2,7 @@ import ConfigParser
 import fnmatch
 import re
 import os
+import time
 import datetime
 import calendar
 import pytz
@@ -19,6 +20,10 @@ except:  # debug env
     import default_logger as log
     from sample import FetchInProgress
     log.info('[AtsdReader] reader running in debug environment')
+
+
+def strf_timestamp(sec):
+    return datetime.datetime.fromtimestamp(sec).strftime('%d %m %Y %H:%M:%S')
 
 
 def _time_minus_months(ts, months):
@@ -357,6 +362,9 @@ class Instance(object):
         self._client = client
 
     def get_retention_interval(self):
+        """
+        :return: `Number` seconds or `None` if no default interval
+        """
         try:
             return self._client.metric_intervals[self.metric_name]
         except KeyError:
@@ -466,8 +474,8 @@ class AtsdReader(object):
             start_time = _time_minus_interval(end_time, self.default_interval)
 
         log.info(
-            '[AtsdReader {2}] fetching: start_time={0} end_time={1}'
-            .format(start_time, end_time, self._pid)
+            '[AtsdReader {2}] fetching: interval=({0}, {1})'
+            .format(strf_timestamp(start_time), strf_timestamp(end_time), self._pid)
         )
 
         if self.aggregator:
@@ -484,9 +492,19 @@ class AtsdReader(object):
         """
 
         retention_interval = self._instance.get_retention_interval()
-        if retention_interval:
-            log.info('[AtsdReader ' + self._pid + '] interval=' + str(retention_interval))
-            return IntervalSet([Interval(*retention_interval)])
+        if retention_interval is not None:
+            now = time.time()
+            if retention_interval == 0:
+                start_time = 0
+            else:
+                start_time = now - retention_interval
+
+            log.info('[AtsdReader ' + self._pid + ']'
+                     + ' default retention_interval=('
+                     + strf_timestamp(start_time) + ','
+                     + strf_timestamp(now) + ')')
+
+            return IntervalSet([Interval(start_time, now)])
 
         # FIXME: metric not available in tests
         metric = self._instance.get_metric()
@@ -500,6 +518,9 @@ class AtsdReader(object):
         retention = metric['retentionInterval']
         start_time = (end_time - retention) if retention else 1
 
-        log.info('[AtsdReader ' + self._pid + '] interval=' + str((start_time, end_time)))
+        log.info('[AtsdReader ' + self._pid + ']'
+                 + ' retention_interval=('
+                 + strf_timestamp(start_time) + ','
+                 + strf_timestamp(end_time) + ')')
 
         return IntervalSet([Interval(start_time, end_time)])
