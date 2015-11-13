@@ -68,10 +68,11 @@ class AtsdFinderG(object):
         :return: `generator`<Node>
         """
 
+        self._log_info('query = ' + query)
+
         try:
 
             pattern = query.pattern
-            self._log_info('query = ' + pattern)
 
             if pattern == '':
 
