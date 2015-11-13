@@ -425,6 +425,15 @@ class Instance(object):
                                     'entities/' + utils.quote(self.entity_name))
 
 
+# noinspection PyMethodMayBeStatic
+class EmptyReader(object):
+
+    def fetch(self, start, end):
+        raise RuntimeError('empty reader could not fetch')
+
+    def get_intervals(self):
+        return IntervalSet([Interval(0, 1)])
+
 class AtsdReader(object):
     __slots__ = ('_instance',
                  'aggregator',
