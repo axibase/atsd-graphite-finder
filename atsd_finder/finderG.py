@@ -82,7 +82,7 @@ class AtsdFinderG(object):
                 response = self._client.query_graphite_metrics(query.pattern, False)
                 self._log_info('response = ' + unicode(response))
 
-                for metric in response.json()['metrics']:
+                for metric in response['metrics']:
 
                     if metric['is_leaf'] == 0:
                         yield self._make_branch(metric['path'][0:-1])
@@ -94,7 +94,7 @@ class AtsdFinderG(object):
                 response = self._client.query_graphite_metrics(query.pattern, True)
                 self._log_info('response = ' + unicode(response))
 
-                for metric in response.json()['metrics']:
+                for metric in response['metrics']:
 
                     if metric['is_leaf'] == 0:
                         yield self._make_branch(metric['path'][0:-1])
