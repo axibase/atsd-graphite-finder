@@ -2,7 +2,7 @@
 
 import os
 
-from .reader import AtsdReader
+from .reader import AtsdReader, EmptyReader
 from .client import AtsdClient
 import utils
 
@@ -48,7 +48,7 @@ class AtsdFinderG(object):
 
         if series is None:
 
-            return LeafNode(path, None)
+            return LeafNode(path, EmptyReader())
 
         else:
 
