@@ -21,25 +21,17 @@ class AtsdFinderG(object):
         except AttributeError:
             self.pid = unicode(os.getpid())
 
-        self._log_info('init')
-
-    def _log_info(self, message):
-
-        log.info(message, self)
-
-    def _log_exc(self, message):
-
-        log.exception(message, self)
+        log.info('init', self)
 
     def _make_branch(self, path):
 
-        #self._log_info('Branch path = ' + path)
+        #log.info('Branch path = ' + path, self)
 
         return BranchNode(path)
 
     def _make_leaf(self, path, series, client):
 
-        #self._log_info('Leaf path = ' + path)
+        #log.info('Leaf path = ' + path, self)
 
         if series is None:
 
@@ -55,7 +47,7 @@ class AtsdFinderG(object):
 
             except StandardError as e:
 
-                self._log_exc(unicode(e))
+                log.exception(unicode(e), self)
 
     def find_nodes(self, query):
         """
@@ -63,7 +55,7 @@ class AtsdFinderG(object):
         :return: `generator`<Node>
         """
 
-        self._log_info('query = ' + unicode(query.__dict__))
+        log.info('query = ' + unicode(query.__dict__), self)
 
         try:
 
@@ -74,7 +66,7 @@ class AtsdFinderG(object):
             elif query.startTime is None:
 
                 response = AtsdClient().query_graphite_metrics(query.pattern, False)
-                #self._log_info('response = ' + unicode(response))
+                log.info('response', self)
 
                 for metric in response['metrics']:
 
@@ -83,12 +75,14 @@ class AtsdFinderG(object):
                     else:
                         yield self._make_leaf(metric['path'], None, None)
 
+                log.info('tree ready', self)
+
             else:
 
                 client = AtsdClient()
 
                 response = client.query_graphite_metrics(query.pattern, True)
-                #self._log_info('response = ' + unicode(response))
+                log.info('response', self)
 
                 for metric in response['metrics']:
 
@@ -97,6 +91,8 @@ class AtsdFinderG(object):
                     else:
                         yield self._make_leaf(metric['path'], metric['series'], client)
 
+                log.info('tree ready', self)
+
         except StandardError as e:
 
-            self._log_exc(unicode(e))
+            log.exception(unicode(e), self)
