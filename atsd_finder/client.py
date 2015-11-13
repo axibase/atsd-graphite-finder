@@ -1,8 +1,6 @@
 import requests
 import urlparse
 import json
-import random
-import time
 
 import utils
 
@@ -77,9 +75,9 @@ class QueryCollection(object):
         """
 
         self._counter += 1
-        id_ = self._counter
+        id_ = str(self._counter)
 
-        query['requestId'] = str(id_)
+        query['requestId'] = id_
 
         self._queries[id_] = query
 
