@@ -228,8 +228,9 @@ class AtsdClient(object):
 
         expression = utils.quote("name in ('" + "','".join(metric_names) + "')")
 
+        log.info('[AtsdClient] request metrics, expression=' + expression)
         metrics = self.request('GET', 'metrics?expression=' + expression)
-        log.info('update intervals for metrics {0}'
+        log.info('[AtsdClient] update intervals for metrics {0}'
                  .format([m['name'] for m in metrics]))
 
         for metric in metrics:
