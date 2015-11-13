@@ -68,17 +68,15 @@ class AtsdFinderG(object):
         :return: `generator`<Node>
         """
 
-        self._log_info('query = ' + query)
+        self._log_info('query = ' + unicode(query.__dict__))
 
         try:
 
-            pattern = query.pattern
-
-            if pattern == '':
+            if query.pattern == '':
 
                 raise StopIteration
 
-            elif pattern[-1] == '*':
+            elif query.startTime is None:
 
                 response = self._client.query_graphite_metrics(query.pattern, False)
                 self._log_info('response = ' + unicode(response))
