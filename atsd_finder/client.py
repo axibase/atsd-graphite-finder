@@ -2,6 +2,7 @@ import requests
 import urlparse
 import json
 import random
+import time
 
 import utils
 
@@ -135,6 +136,8 @@ class AtsdClient(object):
         :raises RuntimeError: server response not 200
         """
 
+        start_time = time.time()
+
         request = requests.Request(
             method=method,
             url=urlparse.urljoin(self._context, path),
@@ -156,6 +159,10 @@ class AtsdClient(object):
         # print '>>>cookies:', response.cookies.items()
         # print '>>>content:', response.text
         # print '============================='
+
+        duration = round((time.time() - start_time) * 1e2) / 1e2
+
+        log.info('request, duration = : ' + str(duration) + 's', self)
 
         if response.status_code != 200:
             raise RuntimeError('server response status_code={:d} {:s}'
