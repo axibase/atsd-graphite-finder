@@ -204,12 +204,14 @@ class AtsdClient(object):
         self._query_storage.add_query(query)
         return FetchInProgress(lambda: self._get_response(query))
 
-    def query_graphite_metrics(self, query):
+    def query_graphite_metrics(self, query, series):
         """
         :param query: `str` dot separated metric pattern
+        :param series: `boolean` series query parameter
         :return: `json`
         """
         path = 'graphite?query=' + query + '&format=completer'
+        path += '&series=true' if series else '&series=false'
 
         resp = self.request('GET', path)
 
