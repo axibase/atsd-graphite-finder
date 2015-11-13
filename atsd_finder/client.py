@@ -42,6 +42,7 @@ class QueryCollection(object):
     def __init__(self):
         self._queries = {}
         self._responses = {}
+        self._counter = 0
 
     def get_waiting_queries(self):
         waiting_queries = []
@@ -75,9 +76,8 @@ class QueryCollection(object):
         :returns: unique id for query
         """
 
-        id_ = str(random.randint(0, 999999))
-        while id_ in self._queries:
-            id_ = str(random.randint(0, 999999))
+        self._counter += 1
+        id_ = self._counter
 
         query['requestId'] = str(id_)
 
@@ -159,7 +159,7 @@ class AtsdClient(object):
         # print '============================='
 
         log.info('request: duration = ' + str(response.elapsed)
-                 + 'size = ' + str(len(response.content)),
+                 + ', size = ' + str(len(response.content)),
                  self)
 
         if response.status_code != 200:
