@@ -434,6 +434,7 @@ class EmptyReader(object):
     def get_intervals(self):
         return IntervalSet([Interval(0, 1)])
 
+
 class AtsdReader(object):
     __slots__ = ('_instance',
                  'aggregator',
@@ -520,11 +521,11 @@ class AtsdReader(object):
         try:
             entity = self._instance.get_entity()
         except RuntimeError:  # server response != 200
-            end_time = metric['lastInsertTime']
+            end_time = metric['lastInsertTime'] / 1000
         else:
-            end_time = max(metric['lastInsertTime'], entity['lastInsertTime'])
+            end_time = max(metric['lastInsertTime'], entity['lastInsertTime']) / 1000
 
-        retention = metric['retentionInterval']
+        retention = metric['retentionInterval'] * 24 * 60 * 60
         start_time = (end_time - retention) if retention else 1
 
         log.info('[AtsdReader ' + self._pid + ']'
