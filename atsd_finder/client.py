@@ -236,7 +236,7 @@ class AtsdClient(object):
         #          .format([m['name'] for m in metrics]))
 
         for metric in metric_names:
-            self.metric_intervals[metric['name']] = 0
+            self.metric_intervals[metric] = 0
 
     def _get_response(self, query):
         """search response in _query_storage if not found make request
