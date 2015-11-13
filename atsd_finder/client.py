@@ -158,7 +158,9 @@ class AtsdClient(object):
         # print '>>>content:', response.text
         # print '============================='
 
-        log.info('request, duration = ' + str(response.elapsed), self)
+        log.info('request: duration = ' + str(response.elapsed)
+                 + 'size = ' + str(len(response.content)),
+                 self)
 
         if response.status_code != 200:
             raise RuntimeError('server response status_code={:d} {:s}'

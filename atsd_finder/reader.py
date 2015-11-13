@@ -178,6 +178,7 @@ def _regularize(series):
 
     for i in range(number_points):
         # on each step add some value
+
         if sample_counter > len(series) - 1:
             values.append(None)
             continue
