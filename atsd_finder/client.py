@@ -226,15 +226,17 @@ class AtsdClient(object):
                 m = metric['series']['metric']
                 metric_names.add(m)
 
-        expression = utils.quote("name in ('" + "','".join(metric_names) + "')")
+        # TODO: request retention interval
 
-        log.info('[AtsdClient] request metrics, expression=' + expression)
-        metrics = self.request('GET', 'metrics?expression=' + expression)
-        log.info('[AtsdClient] update intervals for metrics {0}'
-                 .format([m['name'] for m in metrics]))
+        # expression = utils.quote("name in ('" + "','".join(metric_names) + "')")
+        #
+        # log.info('[AtsdClient] request metrics, expression=' + expression)
+        # metrics = self.request('GET', 'metrics?expression=' + expression)
+        # log.info('[AtsdClient] update intervals for metrics {0}'
+        #          .format([m['name'] for m in metrics]))
 
-        for metric in metrics:
-            self.metric_intervals[metric['name']] = _get_retention_interval(metric)
+        for metric in metric_names:
+            self.metric_intervals[metric['name']] = 0
 
     def _get_response(self, query):
         """search response in _query_storage if not found make request
