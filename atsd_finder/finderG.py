@@ -33,13 +33,13 @@ class AtsdFinderG(object):
 
     def _make_branch(self, path):
 
-        self._log_info('Branch path = ' + path)
+        #self._log_info('Branch path = ' + path)
 
         return BranchNode(path)
 
     def _make_leaf(self, path, series, client):
 
-        self._log_info('Leaf path = ' + path)
+        #self._log_info('Leaf path = ' + path)
 
         if series is None:
 
@@ -74,7 +74,7 @@ class AtsdFinderG(object):
             elif query.startTime is None:
 
                 response = AtsdClient().query_graphite_metrics(query.pattern, False)
-                self._log_info('response = ' + unicode(response))
+                #self._log_info('response = ' + unicode(response))
 
                 for metric in response['metrics']:
 
@@ -88,7 +88,7 @@ class AtsdFinderG(object):
                 client = AtsdClient()
 
                 response = client.query_graphite_metrics(query.pattern, True)
-                self._log_info('response = ' + unicode(response))
+                #self._log_info('response = ' + unicode(response))
 
                 for metric in response['metrics']:
 
