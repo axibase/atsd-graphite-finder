@@ -60,13 +60,18 @@ class AtsdFinderG(object):
 
         try:
 
-            if query.pattern == '':
+            if query.pattern == '' or '(' in query.pattern:
 
                 raise StopIteration
 
             elif query.startTime is None:
 
-                response = AtsdClient().query_graphite_metrics(query.pattern, False)
+                if '*' in query.pattern[:-1] or (len(query.pattern) > 1 and query.pattern[-2] == '.'):
+                    limit = 100
+                else:
+                    limit = None
+
+                response = AtsdClient().query_graphite_metrics(query.pattern, False, limit)
                 log.info('response', self)
 
                 start_time = time.time()
@@ -84,7 +89,7 @@ class AtsdFinderG(object):
 
                 client = AtsdClient()
 
-                response = client.query_graphite_metrics(query.pattern, True)
+                response = client.query_graphite_metrics(query.pattern, True, None)
                 log.info('response', self)
 
                 start_time = time.time()

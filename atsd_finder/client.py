@@ -203,7 +203,7 @@ class AtsdClient(object):
         self._query_storage.add_query(query)
         return FetchInProgress(lambda: self._get_response(query))
 
-    def query_graphite_metrics(self, query, series):
+    def query_graphite_metrics(self, query, series, limit):
         """
         :param query: `str` dot separated metric pattern
         :param series: `boolean` series query parameter
@@ -211,6 +211,7 @@ class AtsdClient(object):
         """
         path = 'graphite?query=' + query + '&format=completer'
         path += '&series=true' if series else '&series=false'
+        path += ('&limit=' + str(limit)) if limit is not None else ''
 
         resp = self.request('GET', path)
 
