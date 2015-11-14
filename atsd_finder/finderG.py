@@ -78,7 +78,7 @@ class AtsdFinderG(object):
                     else:
                         yield self._make_leaf(metric['path'], None, None)
 
-                log.info('tree ready in ' + ('%.2f' % (time.time - start_time)) + 's', self)
+                log.info('tree ready in ' + ('%.2f' % (time.time() - start_time)) + 's', self)
 
             else:
 
@@ -96,7 +96,7 @@ class AtsdFinderG(object):
                     else:
                         yield self._make_leaf(metric['path'], metric['series'], client)
 
-                log.info('tree ready in ' + ('%.2f' % (time.time - start_time)) + 's', self)
+                log.info('tree ready in ' + ('%.2f' % (time.time() - start_time)) + 's', self)
 
         except StandardError as e:
 
