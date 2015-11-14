@@ -68,16 +68,21 @@ class AtsdFinderG(object):
 
                 if '*' in query.pattern[:-1] or (len(query.pattern) > 1 and query.pattern[-2] != '.'):
                     log.info('auto-complete query', self)
-                    limit = 100
+                    limit = 3
                 else:
                     limit = None
 
                 response = AtsdClient().query_graphite_metrics(query.pattern, False, limit)
                 log.info('response', self)
 
+                limit = float('inf') if limit is None else limit
+
                 start_time = time.time()
 
-                for metric in response['metrics']:
+                for i, metric in enumerate(response['metrics']):
+
+                    if i >= limit:
+                        break
 
                     if metric['is_leaf'] == 0:
                         yield self._make_branch(metric['path'][0:-1])
