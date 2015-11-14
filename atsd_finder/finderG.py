@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import time
 
 from .reader import AtsdReader, EmptyReader
 from .client import AtsdClient
@@ -68,6 +69,8 @@ class AtsdFinderG(object):
                 response = AtsdClient().query_graphite_metrics(query.pattern, False)
                 log.info('response', self)
 
+                start_time = time.time()
+
                 for metric in response['metrics']:
 
                     if metric['is_leaf'] == 0:
@@ -75,7 +78,7 @@ class AtsdFinderG(object):
                     else:
                         yield self._make_leaf(metric['path'], None, None)
 
-                log.info('tree ready', self)
+                log.info('tree ready in ' + ('%.2f' % (time.time - start_time)) + 's', self)
 
             else:
 
@@ -84,6 +87,8 @@ class AtsdFinderG(object):
                 response = client.query_graphite_metrics(query.pattern, True)
                 log.info('response', self)
 
+                start_time = time.time()
+
                 for metric in response['metrics']:
 
                     if metric['is_leaf'] == 0:
@@ -91,7 +96,7 @@ class AtsdFinderG(object):
                     else:
                         yield self._make_leaf(metric['path'], metric['series'], client)
 
-                log.info('tree ready', self)
+                log.info('tree ready in ' + ('%.2f' % (time.time - start_time)) + 's', self)
 
         except StandardError as e:
 
