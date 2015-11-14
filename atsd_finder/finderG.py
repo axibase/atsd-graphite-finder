@@ -68,7 +68,7 @@ class AtsdFinderG(object):
 
                 if '*' in query.pattern[:-1] or (len(query.pattern) > 1 and query.pattern[-2] != '.'):
                     log.info('auto-complete query', self)
-                    limit = 3
+                    limit = 100
                 else:
                     limit = None
 
