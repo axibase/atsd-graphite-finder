@@ -284,10 +284,10 @@ class IntervalSchema(object):
         :param metric: `str` metric name
         """
 
-        def section_matches(section):
+        def section_matches(section_):
 
-            if self._config.has_option(section, 'metric-pattern'):
-                metric_pattern = self._config.get(section, 'metric-pattern')
+            if self._config.has_option(section_, 'metric-pattern'):
+                metric_pattern = self._config.get(section_, 'metric-pattern')
                 return fnmatch.fnmatch(metric, metric_pattern)
             return True
 
@@ -305,7 +305,8 @@ class IntervalSchema(object):
 
                 except Exception as e:
                     log.exception('could not parse section {:s} in {:s}'
-                                  .format(section, IntervalSchema.CONF_NAME) + unicode(e), self)
+                                  .format(section, IntervalSchema.CONF_NAME)
+                                  + unicode(e), self)
 
         self._map = {}
 
@@ -315,6 +316,8 @@ class IntervalSchema(object):
         return step of lowest schema interval that bigger than current
         if interval exists do not use start_time
 
+        :param start_time: `Number` timestamp in seconds
+        :param end_time: `Number` timestamp in seconds
         :param interval: `Number` seconds
         :return: :class:`.Aggregator` | None
         """
@@ -382,6 +385,8 @@ class Instance(object):
 
         future = self._client.query_series(self, start_time, end_time, aggregator)
 
+        inst = self
+
         def get_formatted_series():
             resp = future.waitForResults()
             series = resp['data']
@@ -402,11 +407,11 @@ class Instance(object):
                 time_info, values = _regularize(series)
 
             log.info('fetched {0} values, interval={1} - {2}, step={3}sec'
-                     .format(len(values),
+                     .format(len(series),
                              strf_timestamp(time_info[0]),
                              strf_timestamp(time_info[1]),
                              time_info[2]),
-                     'AtsdReader')
+                     'AtsdReader:' + str(id(inst)))
 
             return time_info, values
 
@@ -445,8 +450,7 @@ class AtsdReader(object):
     __slots__ = ('_instance',
                  'aggregator',
                  '_interval_schema',
-                 'default_interval',
-                 '_pid')
+                 'default_interval')
 
     def __init__(self, client, entity, metric, tags, default_interval=None,
                  aggregator=None):
@@ -468,14 +472,12 @@ class AtsdReader(object):
         #: {unit: `str`, count: `Number`} | None
         self.default_interval = default_interval
 
-        #: `str` process info
-        self._pid = str(os.getpid())
-
         log.info('init: entity=' + unicode(entity)
                  + ' metric=' + unicode(metric)
                  + ' tags=' + unicode(tags)
                  + ' aggregator=' + unicode(aggregator)
-                 + ' interval=' + unicode(default_interval), self)
+                 + ' interval=' + unicode(default_interval),
+                 'AtsdReader:' + str(id(self._instance)))
 
     def fetch(self, start_time, end_time):
         """fetch time series
