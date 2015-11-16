@@ -279,16 +279,16 @@ class IntervalSchema(object):
     _config.read(CONF_NAME)
     log.info('sections=' + str(_config.sections()), 'IntervalSchema')
 
-    def __init__(self, metric):
+    def __init__(self, path):
         """
-        :param metric: `str` metric name
+        :param path: `str` metric name
         """
 
         def section_matches(section_):
 
             if self._config.has_option(section_, 'metric-pattern'):
                 metric_pattern = self._config.get(section_, 'metric-pattern')
-                return fnmatch.fnmatch(metric, metric_pattern)
+                return fnmatch.fnmatch(path, metric_pattern)
             return True
 
         for section in self._config.sections():
@@ -467,7 +467,7 @@ class AtsdReader(object):
         self.aggregator = aggregator
 
         #: :class:`.IntervalSchema`
-        self._interval_schema = IntervalSchema(instance.metric_name)
+        self._interval_schema = IntervalSchema(instance.path)
 
         if default_interval:
             default_interval['unit'] = default_interval['unit'].upper()
