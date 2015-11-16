@@ -333,6 +333,9 @@ class IntervalSchema(object):
             starts.append(interval_start)
             period_map[interval_start] = self._map[(count, unit)]
 
+        if len(starts) == 0:
+            return None
+
         starts.sort(reverse=True)
 
         count = 0
@@ -343,10 +346,15 @@ class IntervalSchema(object):
                 count, unit = period_map[start]
                 break
 
-        if count:
-            return Aggregator('AVG', count, unit)
-        else:  # unit = None
+        if count == 0:  # 0 means raw data
             return None
+
+        if unit is None:  # all starts > start_time
+            # noinspection PyUnboundLocalVariable
+            # len starts != 0
+            count, unit = period_map[start]
+
+        return Aggregator('AVG', count, unit)
 
 
 class Instance(object):
@@ -501,6 +509,7 @@ class AtsdReader(object):
         else:
             aggregator = self._interval_schema.aggregator(end_time, start_time,
                                                           self.default_interval)
+            log.info(str(aggregator))
 
         return self._instance.fetch_series(start_time, end_time, aggregator)
 

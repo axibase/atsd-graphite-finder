@@ -12,7 +12,7 @@ class TestReaderFetch(unittest.TestCase):
         now = time.time()
         reader = atsd_finder.AtsdReader(atsd_finder.reader.Instance('nurswgvml006',
                                                                     'cpu_busy',
-                                                                    {}, '',
+                                                                    {}, 'cpu_busy',
                                                                     self.client))
 
         time_info_day, vals_day = reader.fetch(now - 2 * 60 * 60, now).waitForResults()
