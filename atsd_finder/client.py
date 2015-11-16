@@ -125,8 +125,9 @@ class AtsdClient(object):
         #: metric_name: `str` -> retention_interval sec: `Number`
         self.metric_intervals = {}
 
-    def request(self, method, path, data=None):
+    def request(self, method, path, data=None, params=None):
         """
+        :param params: `dict` query parameters
         :param method: `str`
         :param path: `str` url after 'api/v1'
         :param data: `dict` or `list` json body of request
@@ -137,6 +138,7 @@ class AtsdClient(object):
         request = requests.Request(
             method=method,
             url=urlparse.urljoin(self._context, path),
+            params=params,
             data=json.dumps(data)
         )
 
@@ -205,6 +207,7 @@ class AtsdClient(object):
 
     def query_graphite_metrics(self, query, series, limit):
         """
+        :param limit: `Number` response size
         :param query: `str` dot separated metric pattern
         :param series: `boolean` series query parameter
         :return: `json`
@@ -213,7 +216,14 @@ class AtsdClient(object):
         path += '&series=true' if series else '&series=false'
         path += ('&limit=' + str(limit)) if limit is not None else ''
 
-        resp = self.request('GET', path)
+        params = {'query': query,
+                  'format': 'completer',
+                  'series': 'true' if series else 'false'}
+
+        if limit is not None:
+            params['limit'] = str(limit)
+
+        resp = self.request('GET', 'graphite', params=params)
 
         if series:
             self._update_intervals(resp)

@@ -156,5 +156,10 @@ class TestClient(unittest.TestCase):
 
     def test_request(self):
         client = AtsdClient()
+
         resp = client.request('GET', 'metrics/cpu_busy')
         self.assertEqual(resp['name'], 'cpu_busy')
+
+        resp = client.request('GET', 'metrics',
+                              params={'expression': "name='cpu_busy'"})
+        self.assertEqual(resp[0]['name'], 'cpu_busy')
