@@ -229,7 +229,7 @@ class AtsdClient(object):
             client._update_intervals(resp)
 
             for metric in resp['metrics']:
-                if metric['isLeaf'] == 1:
+                if metric['is_leaf'] == 1:
                     series = metric['series']
                     metric['instance'] = Instance(series['entity'],
                                                   series['metric'],
