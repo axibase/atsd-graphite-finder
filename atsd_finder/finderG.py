@@ -5,7 +5,7 @@ import time
 
 from .reader import AtsdReader, EmptyReader
 from .client import AtsdClient
-import utils
+from . import utils
 
 from graphite.node import BranchNode, LeafNode
 
@@ -30,11 +30,11 @@ class AtsdFinderG(object):
 
         return BranchNode(path)
 
-    def _make_leaf(self, path, series, client):
+    def _make_leaf(self, path, instance=None):
 
         #log.info('Leaf path = ' + path, self)
 
-        if series is None:
+        if instance is None:
 
             return LeafNode(path, EmptyReader())
 
@@ -42,7 +42,7 @@ class AtsdFinderG(object):
 
             try:
 
-                reader = AtsdReader(client, series['entity'], series['metric'], series['tags'])
+                reader = AtsdReader(instance)
 
                 return LeafNode(path, reader)
 
@@ -72,7 +72,7 @@ class AtsdFinderG(object):
                 else:
                     limit = None
 
-                response = AtsdClient().query_graphite_metrics(query.pattern, False, limit)
+                response = AtsdClient.query_graphite_metrics(query.pattern, False, limit)
                 log.info('response', self)
 
                 limit = float('inf') if limit is None else limit
@@ -87,15 +87,13 @@ class AtsdFinderG(object):
                     if metric['is_leaf'] == 0:
                         yield self._make_branch(metric['path'][0:-1])
                     else:
-                        yield self._make_leaf(metric['path'], None, None)
+                        yield self._make_leaf(metric['path'])
 
                 log.info('tree ready in ' + ('%.2f' % (time.time() - start_time)) + 's', self)
 
             else:
 
-                client = AtsdClient()
-
-                response = client.query_graphite_metrics(query.pattern, True, None)
+                response = AtsdClient.query_graphite_metrics(query.pattern, True, None)
                 log.info('response', self)
 
                 start_time = time.time()
@@ -105,7 +103,7 @@ class AtsdFinderG(object):
                     if metric['is_leaf'] == 0:
                         yield self._make_branch(metric['path'][0:-1])
                     else:
-                        yield self._make_leaf(metric['path'], metric['series'], client)
+                        yield self._make_leaf(metric['path'], metric['instance'])
 
                 log.info('tree ready in ' + ('%.2f' % (time.time() - start_time)) + 's', self)
 

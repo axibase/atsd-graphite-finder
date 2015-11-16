@@ -5,10 +5,12 @@ import json
 import fnmatch
 import re
 import os
-import utils
 
 from graphite.local_settings import ATSD_CONF
+from . import utils
+from .reader import Instance
 from .utils import quote, metric_quote, unquote
+from .client import AtsdClient
 
 from .reader import AtsdReader, Aggregator
 
@@ -170,7 +172,7 @@ class AtsdFinder(object):
         return info
 
     def find_nodes(self, query):
-    
+
         try:
     
             self.log_info('query = ' + query.pattern)
@@ -203,6 +205,8 @@ class AtsdFinder(object):
             if not info['valid']:
                 
                 raise StopIteration
+
+            client = AtsdClient()
 
             if info['tokens'] == 0:
 
@@ -409,7 +413,8 @@ class AtsdFinder(object):
                     
                     if fnmatch.fnmatch(path, pattern_match):
                         # self.log_info('path = ' + path)
-                        reader = AtsdReader(entity, metric, tags)
+                        instance = Instance(entity, metric, tags, path, client)
+                        reader = AtsdReader(instance)
                         yield LeafNode(path, reader)
                     
                     path = pattern + '.' + metric_quote('stats')
@@ -427,8 +432,9 @@ class AtsdFinder(object):
                         entity = info['entity']
                         metric = info['metric']
                         tags = info['tags']
-                        
-                        reader = AtsdReader(entity, metric, tags)
+
+                        instance = Instance(entity, metric, tags, pattern, client)
+                        reader = AtsdReader(instance)
                         
                         yield LeafNode(pattern, reader)
                 
@@ -460,10 +466,11 @@ class AtsdFinder(object):
                         period = self.periods[self.period_names.index(period_name)]
                         self.log_info('aggregator = ' + aggregator + ', period = ' + unicode(period))
 
+                        instance = Instance(entity, metric, tags, path, client)
                         if period != 0:
-                            reader = AtsdReader(entity, metric, tags, None, Aggregator(aggregator, period))
+                            reader = AtsdReader(instance, None, Aggregator(aggregator, period))
                         else:
-                            reader = AtsdReader(entity, metric, tags)
+                            reader = AtsdReader(instance)
                         
                         yield LeafNode(path, reader)
                     
@@ -479,10 +486,11 @@ class AtsdFinder(object):
                     period = info['period']
                     self.log_info('aggregator = ' + aggregator + ', period = ' + unicode(period))
 
+                    instance = Instance(entity, metric, tags, pattern, client)
                     if period != 0:
-                        reader = AtsdReader(entity, metric, tags, None, Aggregator(aggregator, period))
+                        reader = AtsdReader(instance, None, Aggregator(aggregator, period))
                     else:
-                        reader = AtsdReader(entity, metric, tags)
+                        reader = AtsdReader(instance)
                     
                     yield LeafNode(pattern, reader)
                     

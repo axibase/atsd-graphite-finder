@@ -354,15 +354,17 @@ class Instance(object):
     series unique identifier
     """
 
-    __slots__ = ('entity_name', 'metric_name', 'tags', '_client')
+    __slots__ = ('entity_name', 'metric_name', 'tags', '_client', 'path')
 
-    def __init__(self, entity_name, metric_name, tags, client):
+    def __init__(self, entity_name, metric_name, tags, path, client):
         #: `str`
         self.entity_name = entity_name
         #: `str`
         self.metric_name = metric_name
         #: `dict`
         self.tags = tags
+        #: `str`
+        self.path = path
         #: :class:`.AtsdClient`
         self._client = client
 
@@ -452,11 +454,11 @@ class AtsdReader(object):
                  '_interval_schema',
                  'default_interval')
 
-    def __init__(self, client, entity, metric, tags, default_interval=None,
+    def __init__(self, instance, default_interval=None,
                  aggregator=None):
 
         #: :class: `.Node`
-        self._instance = Instance(entity, metric, tags, client)
+        self._instance = instance
 
         if aggregator and aggregator.type == 'DETAIL':
             aggregator = None
@@ -465,16 +467,16 @@ class AtsdReader(object):
         self.aggregator = aggregator
 
         #: :class:`.IntervalSchema`
-        self._interval_schema = IntervalSchema(metric)
+        self._interval_schema = IntervalSchema(instance.metric_name)
 
         if default_interval:
             default_interval['unit'] = default_interval['unit'].upper()
         #: {unit: `str`, count: `Number`} | None
         self.default_interval = default_interval
 
-        log.info('init: entity=' + unicode(entity)
-                 + ' metric=' + unicode(metric)
-                 + ' tags=' + unicode(tags)
+        log.info('init: entity=' + unicode(instance.entity_name)
+                 + ' metric=' + unicode(instance.metric_name)
+                 + ' tags=' + unicode(instance.tags)
                  + ' aggregator=' + unicode(aggregator)
                  + ' interval=' + unicode(default_interval),
                  'AtsdReader:' + str(id(self._instance)))

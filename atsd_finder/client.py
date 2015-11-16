@@ -2,7 +2,8 @@ import requests
 import urlparse
 import json
 
-import utils
+from . import utils
+from .reader import Instance
 
 log = utils.get_logger()
 
@@ -205,16 +206,15 @@ class AtsdClient(object):
         self._query_storage.add_query(query)
         return FetchInProgress(lambda: self._get_response(query))
 
-    def query_graphite_metrics(self, query, series, limit):
+    @staticmethod
+    def query_graphite_metrics(query, series, limit):
         """
         :param limit: `Number` response size
         :param query: `str` dot separated metric pattern
         :param series: `boolean` series query parameter
         :return: `json`
         """
-        path = 'graphite?query=' + query + '&format=completer'
-        path += '&series=true' if series else '&series=false'
-        path += ('&limit=' + str(limit)) if limit is not None else ''
+        client = AtsdClient()
 
         params = {'query': query,
                   'format': 'completer',
@@ -223,10 +223,19 @@ class AtsdClient(object):
         if limit is not None:
             params['limit'] = str(limit)
 
-        resp = self.request('GET', 'graphite', params=params)
+        resp = client.request('GET', 'graphite', params=params)
 
         if series:
-            self._update_intervals(resp)
+            client._update_intervals(resp)
+
+            for metric in resp['metrics']:
+                if metric['isLeaf'] == 1:
+                    series = metric['series']
+                    metric['instance'] = Instance(series['entity'],
+                                                  series['metric'],
+                                                  series['tags'],
+                                                  metric['path'],
+                                                  client)
 
         return resp
 

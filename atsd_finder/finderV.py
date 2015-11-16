@@ -5,9 +5,10 @@ import json
 import fnmatch
 import os
 import copy
-import utils
 
 from graphite.local_settings import ATSD_CONF
+from . import utils
+from .reader import Instance
 from .utils import quote, metric_quote, unquote
 
 from .reader import AtsdReader, Aggregator
@@ -213,14 +214,15 @@ class AtsdFinderV(object):
         metric = info['metric']
         tags = info['tags']
         interval = info['interval'] if 'interval' in info else None
+        instance = Instance(entity, metric, tags, path, self._client)
 
         if not 'period' in info or info['period'] is None:
-            reader = AtsdReader(self._client, entity, metric, tags, interval)
+            reader = AtsdReader(instance, interval)
         else:
             period_count = info['period']['count']
             period_unit = info['period']['unit']
             aggregator = info['aggregator'].upper() if 'aggregator' in info else 'AVG'
-            reader = AtsdReader(self._client, entity, metric, tags, interval,
+            reader = AtsdReader(instance, interval,
                                 Aggregator(aggregator, period_count, period_unit))
 
         return LeafNode(path, reader)
