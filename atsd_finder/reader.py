@@ -23,7 +23,7 @@ except:  # debug env
 
 
 def strf_timestamp(sec):
-    return datetime.datetime.fromtimestamp(sec).strftime('%d %m %Y %H:%M:%S')
+    return datetime.datetime.fromtimestamp(sec).strftime('%Y-%m-%d %H:%M:%S')
 
 
 def _time_minus_months(ts, months):
@@ -401,7 +401,7 @@ class Instance(object):
             else:
                 time_info, values = _regularize(series)
 
-            log.info('fetched {0} values, interval={1}:{2}, step={3}sec'
+            log.info('fetched {0} values, interval={1} - {2}, step={3}sec'
                      .format(len(values),
                              strf_timestamp(time_info[0]),
                              strf_timestamp(time_info[1]),
@@ -488,9 +488,9 @@ class AtsdReader(object):
         if self.default_interval:
             start_time = _time_minus_interval(end_time, self.default_interval)
 
-        log.info('fetching: interval=({0}, {1})'
-                 .format(strf_timestamp(start_time), strf_timestamp(end_time)),
-                 self)
+        # log.info('fetching: interval=({0} - {1})'
+        #          .format(strf_timestamp(start_time), strf_timestamp(end_time)),
+        #          self)
 
         if self.aggregator:
             aggregator = self.aggregator
