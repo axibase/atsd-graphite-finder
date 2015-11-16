@@ -346,13 +346,13 @@ class IntervalSchema(object):
                 count, unit = period_map[start]
                 break
 
-        if count == 0:  # 0 means raw data
-            return None
-
         if unit is None:  # all starts > start_time
             # noinspection PyUnboundLocalVariable
             # len starts != 0
             count, unit = period_map[start]
+
+        if count == 0:  # 0 means raw data
+            return None
 
         return Aggregator('AVG', count, unit)
 
