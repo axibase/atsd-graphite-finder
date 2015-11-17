@@ -185,13 +185,13 @@ class Aggregator(object):
         }
 
     def __str__(self):
-        return '<Aggregator type={0}, period={1} {2}>'.format(self.type,
+        return '<Aggregator type={0}, period={1}-{2}>'.format(self.type,
                                                               self.count,
                                                               self.unit)
 
 
 class IntervalSchema(object):
-    # _map: interval -> step in seconds
+    # _map: interval `(count, unit)` -> `.Aggregator` | None
 
     __slots__ = ('_map',)
 
@@ -220,9 +220,20 @@ class IntervalSchema(object):
                     # intervals has form 'x:y, z:t'
                     intervals = self._config.get(section, 'retentions')  # str
                     items = re.split('\s*,\s*', intervals)  # list of str
-                    pairs = (item.split(':') for item in items)  # str tuples
-                    self._map = dict((_str_to_interval(b), _str_to_interval(a))
-                                     for a, b in pairs)
+
+                    self._map = {}
+                    for item in items:
+                        tokens = item.split(':')
+
+                        interval = _str_to_interval(tokens[1])
+                        step_count, step_unit = _str_to_interval(tokens[0])
+                        type = tokens[2].upper() if len(tokens) == 3 else 'AVG'
+
+                        if step_count == 0:
+                            self._map[interval] = None
+                        else:
+                            self._map[interval] = Aggregator(type, step_count, step_unit)
+
                     return
 
                 except Exception as e:
@@ -247,35 +258,26 @@ class IntervalSchema(object):
         if interval:
             start_time = _time_minus_interval(end_time, interval)
 
-        period_map = {}  # interval_start -> period
+        starts_map = {}  # interval_start -> aggregator
         starts = []
         for count, unit in self._map:
             interval = {'count': count, 'unit': unit}
             interval_start = _time_minus_interval(end_time, interval)
             starts.append(interval_start)
-            period_map[interval_start] = self._map[(count, unit)]
+            starts_map[interval_start] = self._map[(count, unit)]
 
         if len(starts) == 0:
             return None
 
         starts.sort(reverse=True)
 
-        count = 0
-        unit = None
         for start in starts:
             if start <= start_time:
-                count, unit = period_map[start]
-                break
+                return starts_map[start]
 
-        if unit is None:  # all starts > start_time
-            # noinspection PyUnboundLocalVariable
-            # len starts != 0
-            count, unit = period_map[start]
-
-        if count == 0:  # 0 means raw data
-            return None
-
-        return Aggregator('AVG', count, unit)
+        # noinspection PyUnboundLocalVariable
+        # starts not empty
+        return starts_map[start]
 
 
 # noinspection PyMethodMayBeStatic

@@ -155,7 +155,9 @@ class Instance(object):
                                  aggregator.count)
 
                     values = [sample['v'] for sample in series]
-                    aggregated = True
+
+                    if aggregator.type != 'DETAIL':
+                        aggregated = True
 
             else:
                 time_info, values = utils.regularize(series)
@@ -341,13 +343,13 @@ class AtsdClient(object):
         :return: :class: `.FetchInProgress` <series json>
         """
 
+        # if aggregator and aggregator.unit == 'SECOND':
+        #     step = aggregator.count
+        #     start_time = (start_time // step) * step
+        #     end_time = (end_time // step) * step
+
         if aggregator and aggregator.type == 'DETAIL':
             aggregator = None
-
-        if aggregator and aggregator.unit == 'SECOND':
-            step = aggregator.count
-            start_time = (start_time // step) * step
-            end_time = (end_time // step + 1) * step
 
         tags_query = {}
         for key in instance.tags:

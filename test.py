@@ -2,7 +2,7 @@ import unittest
 import time
 import atsd_finder
 from atsd_finder.reader import Aggregator
-from atsd_finder.client import AtsdClient
+from atsd_finder.client import AtsdClient, Instance
 
 
 class TestReaderFetch(unittest.TestCase):
@@ -20,9 +20,7 @@ class TestReaderFetch(unittest.TestCase):
 
         self.assertGreater(time_info_day[2], time_info_hour[2])
 
-        instance = atsd_finder.client.Instance('nurswgvml006',
-                                               'cpu_busy',
-                                               {}, '', self.client)
+        instance = Instance('nurswgvml006', 'cpu_busy', {}, '', self.client)
         reader_group = atsd_finder.AtsdReader(instance,
                                               aggregator=Aggregator('AVG', 60, 'SECOND'))
         time_info_group, vals_group = reader_group.fetch(now - 2 * 60 * 60, now).waitForResults()
@@ -32,10 +30,8 @@ class TestReaderFetch(unittest.TestCase):
     def test_reader_fetch_tags(self):
         now = time.time()
 
-        instance = atsd_finder.client.Instance('atsd',
-                                               'metric_gets_per_second',
-                                               {'host': 'NURSWGVML007'}, '',
-                                               self.client)
+        instance = Instance('atsd', 'metric_gets_per_second',
+                            {'host': 'NURSWGVML007'}, '', self.client)
         reader = atsd_finder.AtsdReader(instance,
                                         aggregator=Aggregator('AVG', 5, 'SECOND'))
         time_info, values = reader.fetch(now - 24 * 60 * 60, now).waitForResults()
@@ -48,10 +44,7 @@ class TestReaderFetch(unittest.TestCase):
     def test_reader_fetch_wildcard_aggregate(self):
         now = time.time()
 
-        instance = atsd_finder.client.Instance('nurswgvml*',
-                                               'cpu_busy',
-                                               {}, '',
-                                               self.client)
+        instance = Instance('nurswgvml*', 'cpu_busy', {}, '', self.client)
         reader = atsd_finder.AtsdReader(instance,
                                         aggregator=Aggregator('DELTA', 5, 'SECOND'))
         time_info, values = reader.fetch(now - 24 * 60 * 60, now).waitForResults()
@@ -64,9 +57,7 @@ class TestReaderFetch(unittest.TestCase):
     def test_reader_group(self):
         now = time.time()
 
-        instance = atsd_finder.client.Instance('nurswgvml006',
-                                               'cpu_busy',
-                                               {}, '', self.client)
+        instance = Instance('nurswgvml006', 'cpu_busy', {}, '', self.client)
 
         reader = atsd_finder.AtsdReader(instance,
                                         aggregator=Aggregator('MIN', 60 * 60, 'SECOND'))
@@ -85,15 +76,15 @@ class TestReaderFetch(unittest.TestCase):
     def test_reader_fetch_raw(self):
         now = time.time()
 
-        instance = atsd_finder.client.Instance('safeway',
-                                               'retail_price',
-                                               {u'category': u'Breakfast-Cereal/Cereal/Cereal--All-Family',
-                                                u'name': u'Cheerios Cereal - 18 Oz',
-                                                u'currency': u'usd',
-                                                u'quantity': u'18.0',
-                                                u'unit': u'oz',
-                                                u'zip_code': u'20032'}, '',
-                                               self.client)
+        instance = Instance('safeway',
+                            'retail_price',
+                            {u'category': u'Breakfast-Cereal/Cereal/Cereal--All-Family',
+                             u'name': u'Cheerios Cereal - 18 Oz',
+                             u'currency': u'usd',
+                             u'quantity': u'18.0',
+                             u'unit': u'oz',
+                             u'zip_code': u'20032'},
+                            '', self.client)
         reader = atsd_finder.AtsdReader(instance)
         time_info, values = reader.fetch(now - 24 * 60 * 60, now).waitForResults()
 
@@ -105,14 +96,31 @@ class TestReaderFetch(unittest.TestCase):
     def test_fetch_default_interval(self):
         now = time.time()
 
-        instance = atsd_finder.client.Instance('atsd',
-                                               'metric_gets_per_second',
-                                               {'host': 'NURSWGVML007'}, '',
-                                               self.client)
+        instance = Instance('atsd',
+                            'metric_gets_per_second',
+                            {'host': 'NURSWGVML007'}, '',
+                            self.client)
         reader = atsd_finder.AtsdReader(instance,
                                         default_interval={'unit': 'SECOND', 'count': 60})
         time_info, values = reader.fetch(now - 24 * 60 * 60, now).waitForResults()
         self.assertGreater(60 + time_info[2], time_info[1] - time_info[0])
+
+    def test_fetch_nonregular(self):
+        now = time.time()
+
+        instance = Instance('nurswgvml006', 'memfree', {},
+                            'memfree', self.client)
+        reader = atsd_finder.AtsdReader(instance)
+
+        times1, values1 = reader.fetch(now - 60, now).waitForResults()
+
+        instance = Instance('nurswgvml006', 'memfree', {},
+                            '', self.client)
+        reader = atsd_finder.AtsdReader(instance)
+        times2, values2 = reader.fetch(now - 60, now).waitForResults()
+
+        self.assertEquals(times1[2], times2[2])
+        self.assertListEqual(values1, values2)
 
 
 class TestReader(unittest.TestCase):
