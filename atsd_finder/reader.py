@@ -348,34 +348,6 @@ class AtsdReader(object):
         :return: :class:`.IntervalSet`
         """
 
-        retention_interval = self._instance.get_retention_interval()
-        if retention_interval is not None:
-            now = time.time()
-            if retention_interval == 0:
-                start_time = 0
-            else:
-                start_time = now - retention_interval
-
-            # log.info('default retention_interval=('
-            #          + strf_timestamp(start_time) + ','
-            #          + strf_timestamp(now) + ')', self)
-
-            return IntervalSet([Interval(start_time, now)])
-
-        # FIXME: metric not available in tests
-        metric = self._instance.get_metric()
-        try:
-            entity = self._instance.get_entity()
-        except RuntimeError:  # server response != 200
-            end_time = metric['lastInsertTime'] / 1000
-        else:
-            end_time = max(metric['lastInsertTime'], entity['lastInsertTime']) / 1000
-
-        retention = metric['retentionInterval'] * 24 * 60 * 60
-        start_time = (end_time - retention) if retention else 1
-
-        # log.info('retention_interval=('
-        #          + strf_timestamp(start_time) + ','
-        #          + strf_timestamp(end_time) + ')', self)
+        start_time, end_time = self._instance.get_retention_interval()
 
         return IntervalSet([Interval(start_time, end_time)])

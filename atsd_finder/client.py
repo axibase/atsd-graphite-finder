@@ -1,6 +1,7 @@
 import requests
 import urlparse
 import json
+import time
 from datetime import datetime
 
 from . import utils
@@ -48,7 +49,7 @@ class _FetchTimer(object):
             fetch_duration = datetime.now() - self.time
             self.time = None
 
-            log.info('fetch_duration=' + str(fetch_duration), self)
+            log.info('fetch duration=' + str(fetch_duration), self)
 
 
 def _get_retention_interval(metric):
@@ -78,12 +79,42 @@ class Instance(object):
 
     def get_retention_interval(self):
         """
-        :return: `Number` seconds or `None` if no default interval
+        :return: (start_time, end_time) in seconds
         """
+
         try:
-            return self._client.metric_intervals[self.metric_name]
+            # find in cached retentions
+            retention = self._client.metric_intervals[self.metric_name]
+            now = time.time()
+            if retention == 0:
+                start_time = 0
+            else:
+                start_time = now - retention
+
+            # log.info('default retention_interval=('
+            #          + strf_timestamp(start_time) + ','
+            #          + strf_timestamp(now) + ')', self)
+
+            return start_time, now
+
         except KeyError:
-            return None
+            metric = self.get_metric()
+            try:
+                entity = self.get_entity()
+            except RuntimeError:  # server response != 200
+                end_time = metric['lastInsertTime'] / 1000
+            else:
+                end_time = max(metric['lastInsertTime'], entity['lastInsertTime']) / 1000
+
+            # atsd store retentionInterval in days
+            retention = metric['retentionInterval'] * 24 * 60 * 60
+            start_time = (end_time - retention) if retention else 0
+
+            # log.info('retention_interval=('
+            #          + strf_timestamp(start_time) + ','
+            #          + strf_timestamp(end_time) + ')', self)
+
+            return start_time, end_time
 
     def fetch_series(self, start_time, end_time, aggregator):
         """send query
@@ -254,7 +285,7 @@ class AtsdClient(object):
         self._query_storage = QueryCollection()
 
         #: metric_name: `str` -> retention_interval sec: `Number`
-        self.metric_intervals = {}
+        self.metric_retentions = {}
 
         self.fetch_timer = _FetchTimer()
 
@@ -340,7 +371,8 @@ class AtsdClient(object):
 
     @staticmethod
     def query_graphite_metrics(query, series, limit):
-        """
+        """if series is True creates instance for all leafs
+
         :param limit: `Number` response size
         :param query: `str` dot separated metric pattern
         :param series: `boolean` series query parameter
@@ -392,7 +424,7 @@ class AtsdClient(object):
         #          .format([m['name'] for m in metrics]), self)
 
         for metric in metric_names:
-            self.metric_intervals[metric] = 0
+            self.metric_retentions[metric] = 0
 
     def _get_response(self, query):
         """search response in _query_storage if not found make request
