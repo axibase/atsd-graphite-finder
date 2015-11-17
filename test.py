@@ -10,7 +10,7 @@ class TestReaderFetch(unittest.TestCase):
 
     def test_interval_schema(self):
         now = time.time()
-        reader = atsd_finder.AtsdReader(atsd_finder.reader.Instance('nurswgvml006',
+        reader = atsd_finder.AtsdReader(atsd_finder.client.Instance('nurswgvml006',
                                                                     'cpu_busy',
                                                                     {}, 'cpu_busy',
                                                                     self.client))
@@ -20,7 +20,7 @@ class TestReaderFetch(unittest.TestCase):
 
         self.assertGreater(time_info_day[2], time_info_hour[2])
 
-        instance = atsd_finder.reader.Instance('nurswgvml006',
+        instance = atsd_finder.client.Instance('nurswgvml006',
                                                'cpu_busy',
                                                {}, '', self.client)
         reader_group = atsd_finder.AtsdReader(instance,
@@ -32,7 +32,7 @@ class TestReaderFetch(unittest.TestCase):
     def test_reader_fetch_tags(self):
         now = time.time()
 
-        instance = atsd_finder.reader.Instance('atsd',
+        instance = atsd_finder.client.Instance('atsd',
                                                'metric_gets_per_second',
                                                {'host': 'NURSWGVML007'}, '',
                                                self.client)
@@ -48,7 +48,7 @@ class TestReaderFetch(unittest.TestCase):
     def test_reader_fetch_wildcard_aggregate(self):
         now = time.time()
 
-        instance = atsd_finder.reader.Instance('nurswgvml*',
+        instance = atsd_finder.client.Instance('nurswgvml*',
                                                'cpu_busy',
                                                {}, '',
                                                self.client)
@@ -64,7 +64,7 @@ class TestReaderFetch(unittest.TestCase):
     def test_reader_group(self):
         now = time.time()
 
-        instance = atsd_finder.reader.Instance('nurswgvml006',
+        instance = atsd_finder.client.Instance('nurswgvml006',
                                                'cpu_busy',
                                                {}, '', self.client)
 
@@ -85,7 +85,7 @@ class TestReaderFetch(unittest.TestCase):
     def test_reader_fetch_raw(self):
         now = time.time()
 
-        instance = atsd_finder.reader.Instance('safeway',
+        instance = atsd_finder.client.Instance('safeway',
                                                'retail_price',
                                                {u'category': u'Breakfast-Cereal/Cereal/Cereal--All-Family',
                                                 u'name': u'Cheerios Cereal - 18 Oz',
@@ -105,7 +105,7 @@ class TestReaderFetch(unittest.TestCase):
     def test_fetch_default_interval(self):
         now = time.time()
 
-        instance = atsd_finder.reader.Instance('atsd',
+        instance = atsd_finder.client.Instance('atsd',
                                                'metric_gets_per_second',
                                                {'host': 'NURSWGVML007'}, '',
                                                self.client)
@@ -120,7 +120,7 @@ class TestReader(unittest.TestCase):
 
     def test_get_intervals(self):
 
-        instance = atsd_finder.reader.Instance('atsd',
+        instance = atsd_finder.client.Instance('atsd',
                                                'metric_gets_per_second',
                                                {'host': 'NURSWGVML007'}, '',
                                                self.client)

@@ -3,18 +3,16 @@
 import requests
 import json
 import fnmatch
-import os
 import copy
 
 from graphite.local_settings import ATSD_CONF
-from . import utils
-from .reader import Instance
-from .utils import quote, metric_quote, unquote
-
-from .reader import AtsdReader, Aggregator
-from .client import AtsdClient
-
 from graphite.node import BranchNode, LeafNode
+
+from . import utils
+from .utils import quote, metric_quote, unquote
+from .reader import AtsdReader, Aggregator
+from .client import AtsdClient, Instance
+
 
 log = utils.get_logger()
 
@@ -24,12 +22,6 @@ class AtsdFinderV(object):
     def __init__(self):
 
         self._client = AtsdClient()
-
-        try:
-            # noinspection PyUnresolvedReferences
-            self.pid = unicode(os.getppid()) + ':' + unicode(os.getpid())
-        except AttributeError:
-            self.pid = unicode(os.getpid())
 
         self.log_info('init')
 

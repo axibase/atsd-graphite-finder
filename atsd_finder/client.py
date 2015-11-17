@@ -3,7 +3,6 @@ import urlparse
 import json
 
 from . import utils
-from .reader import Instance
 
 log = utils.get_logger()
 
@@ -30,6 +29,95 @@ def _get_retention_interval(metric):
     days = metric['retentionInterval']
 
     return days * 24 * 60 * 60
+
+
+class Instance(object):
+    """
+    series unique identifier
+    """
+
+    __slots__ = ('entity_name', 'metric_name', 'tags', '_client', 'path')
+
+    def __init__(self, entity_name, metric_name, tags, path, client):
+        #: `str`
+        self.entity_name = entity_name
+        #: `str`
+        self.metric_name = metric_name
+        #: `dict`
+        self.tags = tags
+        #: `str`
+        self.path = path
+        #: :class:`.AtsdClient`
+        self._client = client
+
+    def get_retention_interval(self):
+        """
+        :return: `Number` seconds or `None` if no default interval
+        """
+        try:
+            return self._client.metric_intervals[self.metric_name]
+        except KeyError:
+            return None
+
+    def fetch_series(self, start_time, end_time, aggregator):
+        """
+        :param start_time: `Number` seconds
+        :param end_time: `Number` seconds
+        :param aggregator: :class:`.Aggregator` | None
+        :return: :class: `.FetchInProgress` <(start, end, step), [values]>
+        """
+
+        future = self._client.query_series(self, start_time, end_time, aggregator)
+
+        inst = self
+
+        def get_formatted_series():
+            resp = future.waitForResults()
+            series = resp['data']
+
+            if not len(series):
+                return (start_time, end_time, end_time - start_time), [None]
+            if len(series) == 1:
+                return (start_time, end_time, end_time - start_time), [series[0]['v']]
+
+            if aggregator and aggregator.unit == 'SECOND':
+                # data regularized, send as is
+                time_info = (float(series[0]['t']) / 1000,
+                             float(series[-1]['t']) / 1000 + aggregator.count,
+                             aggregator.count)
+
+                values = [sample['v'] for sample in series]
+            else:
+                time_info, values = utils.regularize(series)
+
+            log.info('fetched {0} values, interval={1} - {2}, step={3}sec'
+                     .format(len(series),
+                             utils.strf_timestamp(time_info[0]),
+                             utils.strf_timestamp(time_info[1]),
+                             time_info[2]),
+                     'AtsdReader:' + str(id(inst)))
+
+            return time_info, values
+
+        return FetchInProgress(get_formatted_series)
+
+    def get_metric(self):
+        """make meta api request
+
+        :return: parsed json response
+        """
+
+        return self._client.request('GET',
+                                    'metrics/' + utils.quote(self.metric_name))
+
+    def get_entity(self):
+        """make meta api request
+
+        :return: parsed json response
+        """
+
+        return self._client.request('GET',
+                                    'entities/' + utils.quote(self.entity_name))
 
 
 class QueryCollection(object):

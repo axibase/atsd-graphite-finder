@@ -4,13 +4,11 @@ import requests
 import json
 import fnmatch
 import re
-import os
 
 from graphite.local_settings import ATSD_CONF
 from . import utils
-from .reader import Instance
 from .utils import quote, metric_quote, unquote
-from .client import AtsdClient
+from .client import AtsdClient, Instance
 
 from .reader import AtsdReader, Aggregator
 
@@ -26,12 +24,6 @@ class AtsdFinder(object):
     period_names = ['1 sec', '1 min', '1 hour', '1 day']
 
     def __init__(self):
-
-        try:
-            # noinspection PyUnresolvedReferences
-            self.pid = unicode(os.getppid()) + ':' + unicode(os.getpid())
-        except AttributeError:
-            self.pid = unicode(os.getpid())
 
         self.log_info('init')
 
@@ -154,7 +146,7 @@ class AtsdFinder(object):
         
             if not all_tags:
 
-                i = i + 4
+                i += 4
 
                 self.log_info('detail token: ' + tokens[i])
 

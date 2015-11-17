@@ -22,10 +22,6 @@ except:  # debug env
     log.info('reader running in debug environment', 'AtsdReader')
 
 
-def strf_timestamp(sec):
-    return datetime.datetime.fromtimestamp(sec).strftime('%Y-%m-%d %H:%M:%S')
-
-
 def _time_minus_months(ts, months):
     """substract given number of months from timestamp
 
@@ -125,78 +121,6 @@ def _time_minus_interval(end_time, interval):
         raise ValueError('wrong interval unit')
 
     return end_time - seconds
-
-
-def _round_step(step):
-    """example: 5003 -> 5000
-    """
-    # TODO: add logic
-    return step
-
-
-def _median_delta(values):
-    """get array of delta, find median value
-    values should be sorted
-    values should contains at least two value
-
-    :param values: `list` of `Numbers`
-    :return: `Number`
-    """
-
-    deltas = []
-    for i in range(1, len(values)):
-        deltas.append(values[i] - values[i - 1])
-
-    deltas.sort()
-    return deltas[len(deltas) // 2]
-
-
-def _regularize(series):
-    """create values with equal periods
-
-    :param series: should contains at least one value
-    :return: time_info, values
-    """
-
-    # for sample in series:
-    #     print(sample)
-    times = [sample['t'] / 1000.0 for sample in series]
-    step = _median_delta(times)
-    step = _round_step(step)
-
-    # round to divisible by step
-    start_time = ((series[0]['t'] / 1000.0) // step) * step
-    end_time = ((series[-1]['t'] / 1000.0) // step + 1) * step
-
-    # log.info('regularize {0}:{1}:{2}'
-    #          .format(start_time, step, end_time), 'AtsdReader')
-
-    number_points = int((end_time - start_time) // step)
-
-    values = []
-    sample_counter = 0
-
-    for i in range(number_points):
-        # on each step add some value
-
-        if sample_counter > len(series) - 1:
-            values.append(None)
-            continue
-
-        t = (start_time + i * step)
-        sample = series[sample_counter]
-
-        if abs(times[sample_counter] - t) <= step:
-            values.append(sample['v'])
-            sample_counter += 1
-        else:
-            values.append(None)
-
-    time_info = (start_time,
-                 start_time + number_points * step,
-                 step)
-
-    return time_info, values
 
 
 def _str_to_interval(val):
@@ -355,95 +279,6 @@ class IntervalSchema(object):
             return None
 
         return Aggregator('AVG', count, unit)
-
-
-class Instance(object):
-    """
-    series unique identifier
-    """
-
-    __slots__ = ('entity_name', 'metric_name', 'tags', '_client', 'path')
-
-    def __init__(self, entity_name, metric_name, tags, path, client):
-        #: `str`
-        self.entity_name = entity_name
-        #: `str`
-        self.metric_name = metric_name
-        #: `dict`
-        self.tags = tags
-        #: `str`
-        self.path = path
-        #: :class:`.AtsdClient`
-        self._client = client
-
-    def get_retention_interval(self):
-        """
-        :return: `Number` seconds or `None` if no default interval
-        """
-        try:
-            return self._client.metric_intervals[self.metric_name]
-        except KeyError:
-            return None
-
-    def fetch_series(self, start_time, end_time, aggregator):
-        """
-        :param start_time: `Number` seconds
-        :param end_time: `Number` seconds
-        :param aggregator: :class:`.Aggregator` | None
-        :return: :class: `.FetchInProgress` <(start, end, step), [values]>
-        """
-
-        future = self._client.query_series(self, start_time, end_time, aggregator)
-
-        inst = self
-
-        def get_formatted_series():
-            resp = future.waitForResults()
-            series = resp['data']
-
-            if not len(series):
-                return (start_time, end_time, end_time - start_time), [None]
-            if len(series) == 1:
-                return (start_time, end_time, end_time - start_time), [series[0]['v']]
-
-            if aggregator and aggregator.unit == 'SECOND':
-                # data regularized, send as is
-                time_info = (float(series[0]['t']) / 1000,
-                             float(series[-1]['t']) / 1000 + aggregator.count,
-                             aggregator.count)
-
-                values = [sample['v'] for sample in series]
-            else:
-                time_info, values = _regularize(series)
-
-            log.info('fetched {0} values, interval={1} - {2}, step={3}sec'
-                     .format(len(series),
-                             strf_timestamp(time_info[0]),
-                             strf_timestamp(time_info[1]),
-                             time_info[2]),
-                     'AtsdReader:' + str(id(inst)))
-
-            return time_info, values
-
-        return FetchInProgress(get_formatted_series)
-
-    def get_metric(self):
-        """make meta api request
-
-        :return: parsed json response
-        """
-
-        return self._client.request('GET',
-                                    'metrics/' + utils.quote(self.metric_name))
-
-    def get_entity(self):
-        """make meta api request
-
-        :return: parsed json response
-        """
-
-        return self._client.request('GET',
-                                    'entities/' + utils.quote(self.entity_name))
 
 
 # noinspection PyMethodMayBeStatic

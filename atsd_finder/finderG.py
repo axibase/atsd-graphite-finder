@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import os
 import time
 
 from .reader import AtsdReader, EmptyReader
@@ -15,12 +14,6 @@ log = utils.get_logger()
 class AtsdFinderG(object):
 
     def __init__(self):
-
-        try:
-            # noinspection PyUnresolvedReferences
-            self.pid = unicode(os.getppid()) + ':' + unicode(os.getpid())
-        except AttributeError:
-            self.pid = unicode(os.getpid())
 
         log.info('init', self)
 
