@@ -341,6 +341,9 @@ class AtsdClient(object):
         :return: :class: `.FetchInProgress` <series json>
         """
 
+        if aggregator and aggregator.type == 'DETAIL':
+            aggregator = None
+
         if aggregator and aggregator.unit == 'SECOND':
             step = aggregator.count
             start_time = (start_time // step) * step
@@ -356,7 +359,7 @@ class AtsdClient(object):
                  'metric': instance.metric_name,
                  'tags': tags_query}
 
-        if aggregator and aggregator.type != 'DETAIL':
+        if aggregator is not None:
             # request regularized data
             if aggregator.type in NON_GROUP_STATS:
                 query['group'] = {"type": "SUM",

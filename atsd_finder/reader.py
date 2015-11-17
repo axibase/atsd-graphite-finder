@@ -2,7 +2,6 @@ import ConfigParser
 import fnmatch
 import re
 import os
-import time
 import datetime
 import calendar
 import pytz
@@ -145,7 +144,9 @@ class Aggregator(object):
     __slots__ = ('type', 'count', 'unit', 'interpolate')
 
     def __init__(self, type, count, unit='SECOND', interpolate='STEP'):
-        # TODO: throw Exception if type == 'DETAIL'
+        """type=DETAIL is used to prevent data regularization, use with care
+        """
+
         if not count:
             raise ValueError('Aggregator.count could not be ' + unicode(count))
 
@@ -279,6 +280,7 @@ class IntervalSchema(object):
 
 # noinspection PyMethodMayBeStatic
 class EmptyReader(object):
+    __slots__ = ()
 
     def fetch(self, start, end):
         raise RuntimeError('empty reader could not fetch')
@@ -293,14 +295,12 @@ class AtsdReader(object):
                  '_interval_schema',
                  'default_interval')
 
-    def __init__(self, instance, default_interval=None,
-                 aggregator=None):
+    def __init__(self, instance, default_interval=None, aggregator=None):
+        """CAUTION: aggregator.type DETAIL is used to prevent data regularization
+        """
 
         #: :class: `.Node`
         self._instance = instance
-
-        if aggregator and aggregator.type == 'DETAIL':
-            aggregator = None
 
         #: :class: `.Aggregator` | `None`
         self.aggregator = aggregator
