@@ -68,14 +68,14 @@ class AtsdFinderG(object):
                 response = AtsdClient.query_graphite_metrics(query.pattern, False, limit)
                 log.info('response', self)
 
-                #limit = float('inf') if limit is None else limit
+                limit = float('inf') if limit is None else limit
 
                 start_time = time.time()
 
                 for i, metric in enumerate(response['metrics']):
 
-                    #if i >= limit:
-                    #    break
+                    if i >= limit:
+                        break
 
                     if metric['is_leaf'] == 0:
                         yield self._make_branch(metric['path'][0:-1])
