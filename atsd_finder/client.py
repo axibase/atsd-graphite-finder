@@ -87,11 +87,14 @@ class Instance(object):
                              aggregator.count)
 
                 values = [sample['v'] for sample in series]
+                aggregated = True
             else:
                 time_info, values = utils.regularize(series)
+                aggregated = False
 
-            log.info('fetched {0} values, interval={1} - {2}, step={3}sec'
+            log.info('fetched {0} {1} values, interval={2} - {3}, step={4}sec'
                      .format(len(series),
+                             'aggregated' if aggregated else 'raw',
                              utils.strf_timestamp(time_info[0]),
                              utils.strf_timestamp(time_info[1]),
                              time_info[2]),

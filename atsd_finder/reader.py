@@ -237,7 +237,7 @@ class IntervalSchema(object):
     def aggregator(self, end_time, start_time, interval):
         """find step for current interval using interval schema
 
-        return step of lowest schema interval that bigger than current
+        return step of the widest schema interval that include start_time
         if interval exists do not use start_time
 
         :param start_time: `Number` timestamp in seconds
@@ -265,7 +265,6 @@ class IntervalSchema(object):
         count = 0
         unit = None
         for start in starts:
-            print 'aggregator', period_map[start]
             if start <= start_time:
                 count, unit = period_map[start]
                 break
