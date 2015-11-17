@@ -51,9 +51,6 @@ def _time_minus_months(ts, months):
                                     dt_local.second).replace(tzinfo=tz_local)
     resdt_utc = resdt_local.astimezone(tz_utc)
 
-    log.info('{0} - {1}mon - {2}'
-             .format(dt_local, months, resdt_local), 'AtsdReader')
-
     return calendar.timegm(resdt_utc.timetuple())
 
 

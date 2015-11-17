@@ -1,6 +1,7 @@
 import requests
 import urlparse
 import json
+from datetime import datetime
 
 from . import utils
 
@@ -23,6 +24,31 @@ NON_GROUP_STATS = ('FIRST',
                    'THRESHOLD_COUNT',
                    'THRESHOLD_DURATION',
                    'THRESHOLD_PERCENT')
+
+
+class _FetchTimer(object):
+
+    def __init__(self):
+        self.waiting_fetches = 0
+        self.time = None  # datetime
+
+    def inc_fetches(self):
+        if self.time is None:
+            self.time = datetime.now()
+
+        self.waiting_fetches += 1
+
+    def dec_fetches(self):
+        if self.waiting_fetches == 0:
+            raise RuntimeError('_FetchTimer.waiting_fetches < 0')
+
+        self.waiting_fetches -= 1
+
+        if self.waiting_fetches == 0:
+            fetch_duration = datetime.now() - self.time
+            self.time = None
+
+            log.info('fetch_duration=' + str(fetch_duration), self)
 
 
 def _get_retention_interval(metric):
@@ -60,37 +86,48 @@ class Instance(object):
             return None
 
     def fetch_series(self, start_time, end_time, aggregator):
-        """
+        """send query
+
         :param start_time: `Number` seconds
         :param end_time: `Number` seconds
         :param aggregator: :class:`.Aggregator` | None
         :return: :class: `.FetchInProgress` <(start, end, step), [values]>
         """
 
+        self._client.fetch_timer.inc_fetches()
+
         future = self._client.query_series(self, start_time, end_time, aggregator)
 
         inst = self
 
         def get_formatted_series():
+            """get real values and regularize them
+
+            :return: time_info, values
+            """
             resp = future.waitForResults()
             series = resp['data']
+            aggregated = False
 
             if not len(series):
-                return (start_time, end_time, end_time - start_time), [None]
-            if len(series) == 1:
-                return (start_time, end_time, end_time - start_time), [series[0]['v']]
+                time_info = start_time, end_time, end_time - start_time
+                values = [None]
 
-            if aggregator and aggregator.unit == 'SECOND':
-                # data regularized, send as is
-                time_info = (float(series[0]['t']) / 1000,
-                             float(series[-1]['t']) / 1000 + aggregator.count,
-                             aggregator.count)
+            elif len(series) == 1:
+                time_info = start_time, end_time, end_time - start_time
+                values = [series[0]['v']]
 
-                values = [sample['v'] for sample in series]
-                aggregated = True
+            elif aggregator and aggregator.unit == 'SECOND':
+                    # data regularized, send as is
+                    time_info = (float(series[0]['t']) / 1000,
+                                 float(series[-1]['t']) / 1000 + aggregator.count,
+                                 aggregator.count)
+
+                    values = [sample['v'] for sample in series]
+                    aggregated = True
+
             else:
                 time_info, values = utils.regularize(series)
-                aggregated = False
 
             log.info('fetched {0} {1} values, interval={2} - {3}, step={4}sec'
                      .format(len(series),
@@ -99,6 +136,8 @@ class Instance(object):
                              utils.strf_timestamp(time_info[1]),
                              time_info[2]),
                      'AtsdReader:' + str(id(inst)))
+
+            self._client.fetch_timer.dec_fetches()
 
             return time_info, values
 
@@ -216,6 +255,8 @@ class AtsdClient(object):
 
         #: metric_name: `str` -> retention_interval sec: `Number`
         self.metric_intervals = {}
+
+        self.fetch_timer = _FetchTimer()
 
     def request(self, method, path, data=None, params=None):
         """
