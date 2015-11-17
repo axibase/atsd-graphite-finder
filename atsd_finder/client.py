@@ -84,7 +84,7 @@ class Instance(object):
 
         try:
             # find in cached retentions
-            retention = self._client.metric_intervals[self.metric_name]
+            retention = self._client.metric_retentions[self.metric_name]
             now = time.time()
             if retention == 0:
                 start_time = 0
