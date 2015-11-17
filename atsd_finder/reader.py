@@ -344,7 +344,6 @@ class AtsdReader(object):
         else:
             aggregator = self._interval_schema.aggregator(end_time, start_time,
                                                           self.default_interval)
-            log.info(str(aggregator))
 
         return self._instance.fetch_series(start_time, end_time, aggregator)
 

@@ -248,7 +248,7 @@ class AtsdClient(object):
         # print '============================='
 
         log.info('request: duration = ' + str(response.elapsed)
-                 + ', size = ' + str(len(response.content)),
+                 + ', response-size = ' + str(len(response.content)),
                  self)
 
         if response.status_code != 200:
