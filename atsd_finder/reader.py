@@ -140,6 +140,81 @@ def _str_to_interval(val):
         return float(val), 'SECOND'
 
 
+def _round_step(step):
+    """example: 5003 -> 5000
+    """
+    # TODO: add logic
+    return step
+
+
+def _median_delta(values):
+    """get array of delta, find median value
+    values should be sorted
+    values should contains at least two value
+
+    :param values: `list` of `Numbers`
+    :return: `Number`
+    """
+
+    deltas = []
+    for i in range(1, len(values)):
+        deltas.append(values[i] - values[i - 1])
+
+    deltas.sort()
+    return deltas[len(deltas) // 2]
+
+
+def _regularize(series, step=None):
+    """create values with equal periods
+
+    :param step: `Number` seconds
+    :param series: `[{t: long, v: float}]` should contains at least one value
+    :return: time_info, values
+    """
+
+    # for sample in series:
+    #     print(sample)
+    times = [sample['t'] / 1000.0 for sample in series]
+
+    if step is None:
+        step = _median_delta(times)
+        step = _round_step(step)
+
+    # round to divisible by step
+    start_time = ((series[0]['t'] / 1000.0) // step) * step
+    end_time = ((series[-1]['t'] / 1000.0) // step + 1) * step
+
+    # log.info('regularize {0}:{1}:{2}'
+    #          .format(start_time, step, end_time), 'AtsdReader')
+
+    number_points = int((end_time - start_time) // step)
+
+    values = []
+    sample_counter = 0
+
+    for i in range(number_points):
+        # on each step add some value
+
+        if sample_counter > len(series) - 1:
+            values.append(None)
+            continue
+
+        t = (start_time + i * step)
+        sample = series[sample_counter]
+
+        if abs(times[sample_counter] - t) <= step:
+            values.append(sample['v'])
+            sample_counter += 1
+        else:
+            values.append(None)
+
+    time_info = (start_time,
+                 start_time + number_points * step,
+                 step)
+
+    return time_info, values
+
+
 class Aggregator(object):
     __slots__ = ('type', 'count', 'unit', 'interpolate')
 
@@ -344,6 +419,10 @@ class AtsdReader(object):
                                                           self.default_interval)
 
         def format_series(series):
+            """
+            :param series: [{t, v}]
+            :return: (start, end, step), [values]
+            """
 
             if not len(series):
                 time_info = start_time, end_time, end_time - start_time
@@ -362,10 +441,10 @@ class AtsdReader(object):
                     time_info = start, end, step
                     values = [s['v'] for s in series]
                 else:
-                    time_info, values = utils.regularize(series, step)
+                    time_info, values = _regularize(series, step)
 
             else:
-                time_info, values = utils.regularize(series)
+                time_info, values = _regularize(series)
 
             log.info('fetched {0} samples, interval={1} - {2}, step={3}sec'
                      .format(len(series),

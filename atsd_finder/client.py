@@ -98,9 +98,9 @@ class Instance(object):
             return start_time, now
 
         except KeyError:
-            metric = self.get_metric()
+            metric = self._get_metric()
             try:
-                entity = self.get_entity()
+                entity = self._get_entity()
             except RuntimeError:  # server response != 200
                 end_time = metric['lastInsertTime'] / 1000
             else:
@@ -146,7 +146,7 @@ class Instance(object):
 
         return FetchInProgress(get_formatted_series)
 
-    def get_metric(self):
+    def _get_metric(self):
         """make meta api request
 
         :return: parsed json response
@@ -155,7 +155,7 @@ class Instance(object):
         return self._client.request('GET',
                                     'metrics/' + utils.quote(self.metric_name))
 
-    def get_entity(self):
+    def _get_entity(self):
         """make meta api request
 
         :return: parsed json response
