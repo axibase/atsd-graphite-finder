@@ -138,7 +138,7 @@ class Instance(object):
             """
             resp = future.waitForResults()
             series = resp['data']
-            aggregated = False
+            aggregated = False  # is series aggregated in atsd
 
             if not len(series):
                 time_info = start_time, end_time, end_time - start_time
@@ -149,15 +149,11 @@ class Instance(object):
                 values = [series[0]['v']]
 
             elif aggregator and aggregator.unit == 'SECOND':
-                    # data regularized, send as is
-                    time_info = (float(series[0]['t']) / 1000,
-                                 float(series[-1]['t']) / 1000 + aggregator.count,
-                                 aggregator.count)
 
-                    values = [sample['v'] for sample in series]
+                time_info, values = utils.regularize(series, aggregator.count)
 
-                    if aggregator.type != 'DETAIL':
-                        aggregated = True
+                if aggregator.type != 'DETAIL':
+                    aggregated = True
 
             else:
                 time_info, values = utils.regularize(series)

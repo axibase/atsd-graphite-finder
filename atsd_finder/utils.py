@@ -125,9 +125,10 @@ def _median_delta(values):
     return deltas[len(deltas) // 2]
 
 
-def regularize(series):
+def regularize(series, step=None):
     """create values with equal periods
 
+    :param step: `Number` seconds
     :param series: `[{t: long, v: float}]` should contains at least one value
     :return: time_info, values
     """
@@ -135,8 +136,10 @@ def regularize(series):
     # for sample in series:
     #     print(sample)
     times = [sample['t'] / 1000.0 for sample in series]
-    step = _median_delta(times)
-    step = _round_step(step)
+
+    if step is None:
+        step = _median_delta(times)
+        step = _round_step(step)
 
     # round to divisible by step
     start_time = ((series[0]['t'] / 1000.0) // step) * step
