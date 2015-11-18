@@ -320,7 +320,7 @@ class AtsdReader(object):
                  + ' tags=' + unicode(instance.tags)
                  + ' aggregator=' + unicode(aggregator)
                  + ' interval=' + unicode(default_interval),
-                 'AtsdReader:' + str(id(self._instance)))
+                 'AtsdReader:' + str(id(self)))
 
     def fetch(self, start_time, end_time):
         """fetch time series
@@ -343,7 +343,40 @@ class AtsdReader(object):
             aggregator = self._interval_schema.aggregator(end_time, start_time,
                                                           self.default_interval)
 
-        return self._instance.fetch_series(start_time, end_time, aggregator)
+        def format_series(series):
+
+            if not len(series):
+                time_info = start_time, end_time, end_time - start_time
+                values = [None]
+
+            elif len(series) == 1:
+                time_info = start_time, end_time, end_time - start_time
+                values = [series[0]['v']]
+
+            elif aggregator and aggregator.unit == 'SECOND':
+                step = aggregator.count
+                start = series[0]['t'] / 1000.0
+                end = series[-1]['t'] / 1000.0 + step
+
+                if (end - start) / step == len(series):
+                    time_info = start, end, step
+                    values = [s['v'] for s in series]
+                else:
+                    time_info, values = utils.regularize(series, step)
+
+            else:
+                time_info, values = utils.regularize(series)
+
+            log.info('fetched {0} samples, interval={1} - {2}, step={3}sec'
+                     .format(len(series),
+                             utils.strf_timestamp(time_info[0]),
+                             utils.strf_timestamp(time_info[1]),
+                             time_info[2]),
+                     'AtsdReader:' + str(id(self)))
+
+            return time_info, values
+
+        return self._instance.fetch_series(start_time, end_time, aggregator, format_series)
 
     def get_intervals(self):
         """

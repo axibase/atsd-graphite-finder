@@ -116,9 +116,10 @@ class Instance(object):
 
             return start_time, end_time
 
-    def fetch_series(self, start_time, end_time, aggregator):
+    def fetch_series(self, start_time, end_time, aggregator, format_series):
         """send query
 
+        :param format_series: `.Function` [{t, v}] -> (start, end, step), [values]
         :param start_time: `Number` seconds
         :param end_time: `Number` seconds
         :param aggregator: :class:`.Aggregator` | None
@@ -129,8 +130,6 @@ class Instance(object):
 
         future = self._client.query_series(self, start_time, end_time, aggregator)
 
-        inst = self
-
         def get_formatted_series():
             """get real values and regularize them
 
@@ -139,38 +138,11 @@ class Instance(object):
             resp = future.waitForResults()
             series = resp['data']
 
-            if not len(series):
-                time_info = start_time, end_time, end_time - start_time
-                values = [None]
-
-            elif len(series) == 1:
-                time_info = start_time, end_time, end_time - start_time
-                values = [series[0]['v']]
-
-            elif aggregator and aggregator.unit == 'SECOND':
-                step = aggregator.count
-                start = series[0]['t'] / 1000.0
-                end = series[-1]['t'] / 1000.0 + step
-
-                if (end - start) / step == len(series):
-                    time_info = start, end, step
-                    values = [s['v'] for s in series]
-                else:
-                    time_info, values = utils.regularize(series, step)
-
-            else:
-                time_info, values = utils.regularize(series)
-
-            log.info('fetched {0} samples, interval={1} - {2}, step={3}sec'
-                     .format(len(series),
-                             utils.strf_timestamp(time_info[0]),
-                             utils.strf_timestamp(time_info[1]),
-                             time_info[2]),
-                     'AtsdReader:' + str(id(inst)))
+            formatted_series = format_series(series)
 
             self._client.fetch_timer.dec_fetches()
 
-            return time_info, values
+            return formatted_series
 
         return FetchInProgress(get_formatted_series)
 
