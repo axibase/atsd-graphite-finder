@@ -187,7 +187,7 @@ def _regularize(series, step=None):
     # log.info('regularize {0}:{1}:{2}'
     #          .format(start_time, step, end_time), 'AtsdReader')
 
-    number_points = int((end_time - start_time) // step)
+    number_points = int(round((end_time - start_time) / step))
 
     values = []
     sample_counter = 0
@@ -202,7 +202,7 @@ def _regularize(series, step=None):
         t = (start_time + i * step)
         sample = series[sample_counter]
 
-        if abs(times[sample_counter] - t) <= step:
+        if abs(times[sample_counter] - t) < step:
             values.append(sample['v'])
             sample_counter += 1
         else:
