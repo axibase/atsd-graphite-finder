@@ -19,13 +19,13 @@ class AtsdFinderG(object):
 
     def _make_branch(self, path):
 
-        #log.info('Branch path = ' + path, self)
+        # log.info('Branch path = ' + path, self)
 
         return BranchNode(path)
 
     def _make_leaf(self, path, instance=None):
 
-        #log.info('Leaf path = ' + path, self)
+        # log.info('Leaf path = ' + path, self)
 
         if instance is None:
 

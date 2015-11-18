@@ -84,9 +84,9 @@ class AtsdFinderV(object):
             if len(token) == 0:
                 continue
 
-            if token[0] == '[' and ']' in  token:
-                prefix = token[token.find('[')+1:token.find(']')]
-                token = token[token.find(']')+2:]
+            if token[0] == '[' and ']' in token:
+                prefix = token[token.find('[') + 1:token.find(']')]
+                token = token[token.find(']') + 2:]
             else:
                 prefix = ''
 
@@ -148,8 +148,8 @@ class AtsdFinderV(object):
             token = tokens[-1]
             level = view[len(tokens) - 2]
 
-            if token[0] == '[' and ']' in  token:
-                prefix = token[token.find('[')+1:token.find(']')]
+            if token[0] == '[' and ']' in token:
+                prefix = token[token.find('[') + 1:token.find(']')]
             else:
                 prefix = ''
 
@@ -208,7 +208,7 @@ class AtsdFinderV(object):
         interval = info['interval'] if 'interval' in info else None
         instance = Instance(entity, metric, tags, path, self._client)
 
-        if not 'period' in info or info['period'] is None:
+        if 'period' not in info or info['period'] is None:
             reader = AtsdReader(instance, interval)
         else:
             period_count = info['period']['count']
@@ -358,7 +358,7 @@ class AtsdFinderV(object):
                                 else:
                                     folder = '*'
 
-                                if not folder in ['']:
+                                if folder not in ['']:
                                     folders.append(folder)
 
                             if '*' in folders:
@@ -384,7 +384,7 @@ class AtsdFinderV(object):
 
                             elif 'metric' in info:
 
-                                url = self.url_base + '/metrics/' + quote(info['metric'])+ '/entity-and-tags'
+                                url = self.url_base + '/metrics/' + quote(info['metric']) + '/entity-and-tags'
                                 self.log_info('request_url = ' + url)
 
                                 response = requests.get(url, auth=self.auth)
@@ -443,12 +443,12 @@ class AtsdFinderV(object):
                             expressions = ['name%20like%20%27' + quote(folder) + '%27' for folder in folders]
                             tail = '?expression=' + '%20or%20'.join(expressions)
 
-                            if not 'entity' in info:
+                            if 'entity' not in info:
                                 url = self.url_base + '/metrics'
                             else:
-                                url = self.url_base + '/entities/' + quote(info['entity'])+ '/metrics'
+                                url = self.url_base + '/entities/' + quote(info['entity']) + '/metrics'
 
-                            url = url + tail
+                            url += tail
                             self.log_info('request_url = ' + url)
 
                             response = requests.get(url, auth=self.auth)
@@ -470,7 +470,7 @@ class AtsdFinderV(object):
 
                             if 'metric' in info:
 
-                                url = self.url_base + '/metrics/' + quote(info['metric'])+ '/entity-and-tags'
+                                url = self.url_base + '/metrics/' + quote(info['metric']) + '/entity-and-tags'
                                 self.log_info('request_url = ' + url)
 
                                 response = requests.get(url, auth=self.auth)
@@ -488,7 +488,7 @@ class AtsdFinderV(object):
                                     contains = True
 
                                     for tag_name in token_value:
-                                        if not tag_name in tags:
+                                        if tag_name not in tags:
                                             contains = False
                                             break
 
@@ -509,7 +509,7 @@ class AtsdFinderV(object):
                                         tag_combo[tag_name] = tags[tag_name]
                                         tag_values.append(tags[tag_name])
 
-                                    if matches and not tag_combo in tag_combos:
+                                    if matches and tag_combo not in tag_combos:
 
                                         tag_combos.append(tag_combo)
 
